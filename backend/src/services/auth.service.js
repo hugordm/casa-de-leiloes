@@ -9,6 +9,10 @@ const AppError = require('../errors/AppError');
 const ROLES = ['AUCTIONEER', 'BIDDER'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_ROUNDS = 10;
+// Regra de senha (vale de verdade aqui; o front só avisa antes de enviar).
+// Máximo 72 porque o bcrypt só considera os primeiros 72 bytes da senha.
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 72;
 
 // O que o cliente pode ver de um usuário. NUNCA inclui passwordHash.
 function toPublicUser(user) {
@@ -38,9 +42,8 @@ async function register({ name, email, password, role = 'BIDDER' } = {}) {
 
   if (name.length < 2) throw validationError('Informe seu nome');
   if (!EMAIL_REGEX.test(email)) throw validationError('E-mail inválido');
-  // bcrypt só considera os primeiros 72 bytes da senha, por isso o limite.
-  if (typeof password !== 'string' || password.length < 6 || password.length > 72) {
-    throw validationError('A senha deve ter entre 6 e 72 caracteres');
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
+    throw validationError(`A senha deve ter entre ${PASSWORD_MIN} e ${PASSWORD_MAX} caracteres`);
   }
   if (!ROLES.includes(role)) throw validationError('Perfil inválido');
 

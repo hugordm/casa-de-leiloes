@@ -132,6 +132,26 @@ input::placeholder { color: var(--text-muted); opacity: 0.8; }
 .input-icon .icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 .input-icon input { padding-left: 2.3rem; }
 
+.password-input { position: relative; }
+.password-input input { padding-right: 2.9rem; }
+.password-input__toggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.password-input__toggle:hover { color: var(--text); background: var(--surface-2); }
+.password-input__toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
 .field--error input,
 .field--error .money-input { border-color: var(--danger); }
 .field__error { color: var(--danger); font-size: 0.85rem; margin: 0; }
@@ -629,8 +649,9 @@ input::placeholder { color: var(--text-muted); opacity: 0.8; }
   /* Toasts sobem para não ficarem atrás do botão do assistente */
   .toast-region { bottom: calc(1rem + 56px + 0.75rem); }
 }
-/* Folga no fim da página para o botão flutuante não cobrir o rodapé */
-.footer { padding-bottom: calc(1.5rem + 56px); }
+/* Folga à direita do rodapé para o botão flutuante do assistente não cobrir os links.
+   Substitui o recuo do .container: 1.25rem dele + 56px do botão + 1rem de respiro. */
+.footer__inner { padding-right: calc(56px + 2.25rem); }
 @media (prefers-reduced-motion: reduce) {
   .assistant__panel, .assistant__typing span { animation: none; }
 }

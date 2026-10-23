@@ -27,7 +27,7 @@ Papéis
 - O papel é escolhido no cadastro.
 
 Cadastro e login
-- Cadastro no botão "Cadastrar" (página /cadastro): nome, e-mail, senha de 6 a 72 caracteres e o papel (licitante ou leiloeiro).
+- Cadastro no botão "Cadastrar" (página /cadastro): nome, e-mail, senha de 8 a 72 caracteres (o campo de senha tem um botão de olho para mostrar ou ocultar o que foi digitado) e o papel (licitante ou leiloeiro).
 - Login em "Entrar" (página /login) com e-mail e senha.
 
 Páginas

@@ -197,6 +197,22 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
 
+### Ajuste — regra de senha (8 a 72 caracteres) e botão mostrar/ocultar
+
+**Gerado com IA:**
+- `auth.service.js`: cadastro exige de 8 a 72 caracteres (constantes `PASSWORD_MIN`/`PASSWORD_MAX`).
+  O login, de propósito, não valida tamanho: contas antigas com 6 ou 7 caracteres continuam entrando.
+- `PasswordInput.jsx`: campo com botão "olho" (`type="button"`, aria-label "Mostrar senha"/"Ocultar
+  senha"), usado no login e no cadastro. No cadastro, aviso no campo antes de enviar (sem requisição).
+- `openapi.yaml` e system prompt do assistente atualizados.
+- `tests/auth.test.js` (10 testes: limites 7/8/72/73, senha vazia ou ausente, hash bcrypt, login e
+  conta antiga). Validado por mutação: voltando o mínimo para 6, 4 testes falham.
+- Correção do Extra 3, achada na verificação visual: o botão flutuante cobria o link "Documentação
+  da API" do rodapé em algumas larguras.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
 ## Uso de IA no produto (não só no desenvolvimento)
 
 Além de ajudar a escrever o código, a IA também faz parte do produto: o **assistente** do site

@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/Button';
+import { PasswordInput } from '../components/PasswordInput';
 
 export function LoginPage() {
   const { user, login } = useAuth();
@@ -50,9 +51,8 @@ export function LoginPage() {
         </div>
         <div className="field">
           <label htmlFor="password">Senha</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             required
             value={password}

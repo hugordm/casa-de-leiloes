@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { PasswordInput, PASSWORD_MAX, PASSWORD_MIN, passwordError } from '../components/PasswordInput';
 
 const ROLES = [
   { value: 'BIDDER', title: 'Licitante', text: 'Deposito saldo e dou lances nas obras.', icon: 'gavel' },
@@ -19,15 +20,29 @@ export function RegisterPage() {
 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'BIDDER' });
   const [error, setError] = useState(null);
+  const [passwordMsg, setPasswordMsg] = useState(null); // aviso do campo senha, antes de enviar
   const [loading, setLoading] = useState(false);
 
   if (user) return <Navigate to="/" replace />;
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  function handlePasswordChange(e) {
+    set('password')(e);
+    // Depois do primeiro aviso, o aviso some assim que a senha fica válida.
+    if (passwordMsg) setPasswordMsg(passwordError(e.target.value));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    // Validação no front só para avisar antes de enviar; a regra que vale é a do back-end.
+    const pwdError = passwordError(form.password);
+    setPasswordMsg(pwdError);
+    if (pwdError) {
+      document.getElementById('password')?.focus();
+      return;
+    }
     setLoading(true);
     try {
       const created = await register(form);
@@ -74,18 +89,28 @@ export function RegisterPage() {
           <label htmlFor="email">E-mail</label>
           <input id="email" type="email" autoComplete="email" required value={form.email} onChange={set('email')} />
         </div>
-        <div className="field">
+        <div className={`field ${passwordMsg ? 'field--error' : ''}`}>
           <label htmlFor="password">Senha</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             required
-            minLength={6}
+            minLength={PASSWORD_MIN}
+            maxLength={PASSWORD_MAX}
             value={form.password}
-            onChange={set('password')}
+            onChange={handlePasswordChange}
+            aria-invalid={passwordMsg ? true : undefined}
+            aria-describedby="password-help"
           />
-          <p className="field__hint">Mínimo de 6 caracteres.</p>
+          {passwordMsg ? (
+            <p id="password-help" className="field__error" role="alert">
+              {passwordMsg}
+            </p>
+          ) : (
+            <p id="password-help" className="field__hint">
+              De {PASSWORD_MIN} a {PASSWORD_MAX} caracteres.
+            </p>
+          )}
         </div>
         <Button type="submit" loading={loading} className="btn--block">
           Criar conta
