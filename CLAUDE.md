@@ -211,13 +211,3 @@ decisões técnicas, limitações conhecidas (ex.: Render gratuito "dorme" e o p
 - HTML simples e responsivo, com versão em texto puro.
 - Testes com o cliente do Resend simulado (mock).
 
-### Esqueci minha senha (último extra, não exigido pelo PDF)
-- POST /auth/forgot-password: resposta sempre genérica ("Se o e-mail
-  estiver cadastrado, você receberá um link"); limite por IP.
-- Token aleatório de uso único, guardado só como hash, válido por 30 min.
-- E-mail via Resend com link para /redefinir-senha?token=...
-- POST /auth/reset-password: valida token, aplica a regra de 8
-  caracteres, invalida o token e registra passwordChangedAt no usuário;
-  o middleware auth recusa JWTs emitidos antes dessa data.
-- Testes: token expirado, token reutilizado, e-mail inexistente com a
-  mesma resposta, JWT antigo recusado após a troca.
