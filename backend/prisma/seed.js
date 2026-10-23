@@ -101,6 +101,12 @@ async function addBids(lot, bids) {
 
 async function main() {
   const existingUsers = await prisma.user.count();
+  // Modo usado pelo Docker Compose a cada subida: popula só um banco VAZIO (1ª subida).
+  // Com o banco já populado, apenas avisa e sai com sucesso, para a API seguir subindo.
+  if (existingUsers > 0 && process.env.SEED_IF_EMPTY === 'true') {
+    console.log(`Seed ignorado: o banco já tem ${existingUsers} usuário(s).`);
+    return;
+  }
   if (existingUsers > 0 && process.env.SEED_FORCE !== 'true') {
     console.error(
       `\nSeed cancelado: o banco já tem ${existingUsers} usuário(s) e o seed APAGA tudo.\n` +

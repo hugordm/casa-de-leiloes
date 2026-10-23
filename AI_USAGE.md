@@ -245,6 +245,21 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
 
+### Opcional — Docker Compose completo
+
+**Gerado com IA:**
+- `docker-compose.yml` com `postgres` + `backend` + `frontend`, healthchecks e `depends_on` por
+  `service_healthy`; `backend/Dockerfile` (node:22-slim + openssl), `backend/docker-entrypoint.sh`
+  (migrations → seed só com banco vazio → API), `frontend/Dockerfile` (build com `VITE_API_URL` +
+  `vite preview`) e `.dockerignore`.
+- `seed.js`: modo `SEED_IF_EMPTY=true` (banco já populado → avisa e sai com sucesso).
+- Teste do zero como projeto separado (`-p casa_teste`), sem tocar no volume do banco local:
+  1ª subida (migrations, seed, health, front, F5 em rota, CORS, auditoria íntegra, login e sala no
+  navegador) e 2ª subida (dados mantidos, seed ignorado). Depois, tudo do teste foi removido.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
 ## Uso de IA no produto (não só no desenvolvimento)
 
 Além de ajudar a escrever o código, a IA também faz parte do produto: o **assistente** do site

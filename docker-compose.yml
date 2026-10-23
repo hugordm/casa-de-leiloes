@@ -1,5 +1,7 @@
-# Ambiente local. Por enquanto só o PostgreSQL;
-# backend e frontend entram aqui nas próximas fases.
+# Ambiente local completo: PostgreSQL + API + front.
+#   docker-compose up --build     (ou "docker compose up --build" no Docker Compose v2)
+# Na 1ª subida a API aplica as migrations e roda o seed; nas seguintes, só as migrations.
+# Para rodar API e front direto no Node (sem Docker), suba só o banco: docker-compose up -d postgres
 services:
   postgres:
     image: postgres:16
@@ -18,6 +20,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  backend:
+    build: ./backend
+    container_name: leiloes_backend
+    depends_on:
+      postgres:
+        condition: service_healthy # só sobe com o banco aceitando conexões
+    environment:
+      NODE_ENV: development
+      PORT: 3333
+      # Dentro da rede do Compose o banco é "postgres:5432" (não localhost:5434).
+      DATABASE_URL: postgresql://leiloes:leiloes@postgres:5432/leiloes?schema=public
+      DIRECT_URL: postgresql://leiloes:leiloes@postgres:5432/leiloes?schema=public
+      # Segredos SÓ para uso local. Em produção, valores aleatórios próprios (veja o README).
+      JWT_SECRET: ${JWT_SECRET:-segredo-local-do-docker-nao-usar-em-producao}
+      AUDIT_SECRET: ${AUDIT_SECRET:-auditoria-local-do-docker-nao-usar-em-producao}
+      CORS_ORIGIN: http://localhost:5173
+      APP_URL: http://localhost:5173
+      # Extras opcionais: lidos de um arquivo .env na RAIZ do projeto (ou do terminal), se existirem.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_CHAT_MODEL: ${ANTHROPIC_CHAT_MODEL:-claude-haiku-5-5}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Casa de Leilões <onboarding@resend.dev>}
+    ports:
+      - "3333:3333"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3333/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3333
+    container_name: leiloes_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
 
 volumes:
   pgdata:

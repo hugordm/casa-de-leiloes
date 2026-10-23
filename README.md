@@ -24,11 +24,46 @@ Monorepo: `backend/` e `frontend/`.
 
 ## Como rodar localmente
 
+### Opção 1 — tudo no Docker (um comando)
+
+Pré-requisito: Docker com Docker Compose.
+
+```bash
+docker-compose up --build        # Compose v2: docker compose up --build
+```
+
+- Sobe o **PostgreSQL** (porta 5434), a **API** (http://localhost:3333) e o **front**
+  (http://localhost:5173), nesta ordem: a API só começa com o banco saudável (healthcheck
+  `pg_isready`), e o front só com a API saudável (healthcheck em `/health`).
+- **Primeira subida:** a API aplica as migrations (`prisma migrate deploy`) e roda o seed. Basta abrir
+  http://localhost:5173 e entrar com uma conta do seed (senha `senha123`).
+- **Subidas seguintes:** só as migrations pendentes. O seed roda com `SEED_IF_EMPTY=true` e é
+  ignorado quando o banco já tem dados, então nada é apagado.
+- **Front:** é compilado com `VITE_API_URL=http://localhost:3333`, o endereço da API como o
+  **navegador** a enxerga, e servido pelo `vite preview`, que devolve o `index.html` em qualquer rota
+  (F5 em `/lotes/1` funciona).
+- **Segredos:** `JWT_SECRET` e `AUDIT_SECRET` têm valores padrão **só para uso local**, definidos no
+  `docker-compose.yml`.
+- **Extras opcionais:** para ligar o assistente ou os e-mails, crie um `.env` na **raiz** do projeto
+  (fora do git) com `ANTHROPIC_API_KEY=...` e/ou `EMAIL_ENABLED=true`, `RESEND_API_KEY=...` e
+  `EMAIL_FROM=...`. O Compose lê esse arquivo sozinho.
+- **Comandos úteis:**
+  - `docker-compose logs -f backend` acompanha a API;
+  - `docker-compose down` para tudo e mantém os dados;
+  - `docker-compose down -v` apaga também o banco (a próxima subida recria e roda o seed).
+- As portas 5434, 3333 e 5173 precisam estar livres. Se a API ou o front estiverem rodando fora do
+  Docker, pare-os antes.
+
+Arquivos: `docker-compose.yml`, `backend/Dockerfile`, `backend/docker-entrypoint.sh`
+(migrations → seed → API), `frontend/Dockerfile` e os `.dockerignore`.
+
+### Opção 2 — API e front no Node, só o banco no Docker
+
 Pré-requisitos: Node.js 20+, Docker e Docker Compose.
 
 ```bash
-# 1. Banco (PostgreSQL na porta 5434)
-docker-compose up -d
+# 1. Só o banco (PostgreSQL na porta 5434)
+docker-compose up -d postgres
 
 # 2. Back-end
 cd backend
