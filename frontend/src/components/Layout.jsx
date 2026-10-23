@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router';
 import { apiUrl } from '../api/client';
+import { AssistantWidget } from './AssistantWidget';
 import { Header } from './Header';
 
 // Moldura comum a todas as páginas: cabeçalho, conteúdo e rodapé.
@@ -29,6 +30,7 @@ export function Layout() {
           </p>
         </div>
       </footer>
+      <AssistantWidget />
     </div>
   );
 }

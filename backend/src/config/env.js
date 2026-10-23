@@ -49,6 +49,10 @@ module.exports = {
   EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   EMAIL_FROM: process.env.EMAIL_FROM || 'Casa de Leilões <onboarding@resend.dev>',
+  // Assistente (chat) com a API da Anthropic. Sem chave, POST /assistant/chat responde 503
+  // e o resto do site segue normal. A chave fica SÓ aqui no back-end, nunca no front.
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+  ANTHROPIC_CHAT_MODEL: process.env.ANTHROPIC_CHAT_MODEL || 'claude-haiku-5-5',
   // Endereço do front, usado nos links dos e-mails (padrão: a 1ª origem do CORS).
   APP_URL: (process.env.APP_URL || corsOrigins()[0]).replace(/\/+$/, ''),
   // API do Art Institute of Chicago (catálogo de obras)

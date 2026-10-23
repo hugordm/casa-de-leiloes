@@ -83,6 +83,8 @@ const PATHS = {
       <path d="m21 16-5-5-9 9" />
     </>
   ),
+  chat: <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12Z" />,
+  send: <path d="M21 3 10 14M21 3l-7 18-4-7-7-4 18-7Z" />,
 };
 
 export function Icon({ name, size = 18, className = '', label }) {

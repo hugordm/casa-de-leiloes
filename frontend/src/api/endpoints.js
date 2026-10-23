@@ -39,3 +39,8 @@ export const publicApi = {
   audit: (lotId) => request(`/audit/${lotId}`),
   receipt: (code) => request(`/receipts/${encodeURIComponent(code)}`),
 };
+
+export const assistantApi = {
+  // history: [{ role: 'user' | 'assistant', content }] — o back usa só as últimas 6
+  chat: (message, history) => request('/assistant/chat', { method: 'POST', body: { message, history } }),
+};

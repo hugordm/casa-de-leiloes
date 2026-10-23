@@ -30,6 +30,8 @@ tags:
   - name: Minha conta
   - name: Público
     description: Auditoria, comprovante e imagens (sem login)
+  - name: Assistente
+    description: Chat com IA (Claude Haiku) sobre as regras e o uso do site
 
 paths:
   /health:
@@ -604,6 +606,77 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               example: { error: { code: RECEIPT_NOT_FOUND, message: Comprovante não encontrado } }
+
+  /assistant/chat:
+    post:
+      tags: [Assistente]
+      summary: Pergunta ao assistente da Casa de Leilões
+      description: |
+        Público (sem login). Envia a pergunta para a API da Anthropic (modelo em
+        `ANTHROPIC_CHAT_MODEL`, padrão `claude-haiku-5-5`) com um system prompt que contém as
+        regras reais do site. O assistente só fala da Casa de Leilões (outros assuntos recebem
+        uma recusa educada), não executa ações e não acessa dados de usuários.
+
+        - `message`: até 500 caracteres.
+        - `history`: opcional; só as **últimas 6** mensagens são usadas.
+        - Resposta curta, em português e em **texto puro** (sem markdown).
+        - Limite: **10 mensagens por minuto por IP**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, maxLength: 500, example: O que é o saldo comprometido? }
+                history:
+                  type: array
+                  description: Mensagens anteriores da conversa (as mais antigas primeiro)
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role: { type: string, enum: [user, assistant] }
+                      content: { type: string }
+            example:
+              message: E se alguém cobrir meu lance?
+              history:
+                - { role: user, content: O que é o saldo comprometido? }
+                - { role: assistant, content: É a soma dos lotes ao vivo em que você está liderando. Esse valor fica reservado até você ser superado ou o lote encerrar. }
+      responses:
+        '200':
+          description: Resposta do assistente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply: { type: string }
+              example:
+                reply: O valor que estava comprometido volta na hora para o seu saldo disponível, e você pode dar um novo lance se quiser.
+        '400':
+          description: Mensagem vazia ou longa demais
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                vazia:
+                  value: { error: { code: VALIDATION_ERROR, message: Digite uma pergunta } }
+                longa:
+                  value: { error: { code: MESSAGE_TOO_LONG, message: A mensagem deve ter no máximo 500 caracteres } }
+        '429':
+          description: Mais de 10 mensagens no último minuto (por IP)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: RATE_LIMITED, message: Muitas mensagens em pouco tempo. Aguarde um minuto e tente de novo. } }
+        '503':
+          description: Sem `ANTHROPIC_API_KEY` configurada ou API da Anthropic fora do ar / lenta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: ASSISTANT_UNAVAILABLE, message: Assistente indisponível no momento } }
 
   /images/aic/{imageId}:
     get:
