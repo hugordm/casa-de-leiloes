@@ -7,18 +7,48 @@ adulteração** dos lances. Extras: documentação Swagger, e-mails transacionai
 
 > Teste técnico Elite Dev — Verzel.
 
-**Produção:** front <https://SEU-PROJETO.vercel.app> · API <https://SUA-API.onrender.com/health> ·
-**Documentação da API (Swagger):** <https://SUA-API.onrender.com/docs>
-_(links preenchidos após o deploy; veja [Deploy](#deploy))_
+**Produção:** front <https://casa-de-leiloes.vercel.app> · API <https://casa-de-leiloes.onrender.com/health> ·
+**Documentação da API (Swagger):** <https://casa-de-leiloes.onrender.com/docs> ·
+**Repositório:** <https://github.com/hugordm/casa-de-leiloes>
+
+## Requisitos do teste
+
+| Requisito do PDF | Onde está |
+|---|---|
+| Deploy (obrigatório) | Vercel (front), Render (API) e Neon (banco); links acima e seção [Deploy](#deploy) |
+| Itens vindos de uma API pública | Art Institute of Chicago: `backend/src/services/catalog.service.js` |
+| Leiloeiro cria e gerencia os próprios lotes e não dá lances | `/painel`, `/painel/novo-lote`; `lot.service.js`, `middlewares/requireRole.js` |
+| Licitante deposita, dá lances e arremata | `/carteira`, `/lotes/:id`; `wallet.service.js`, `bid.service.js` |
+| Vitrine (ao vivo, agendados, encerrados; sem cancelados) | `/` — `ShowcasePage.jsx`; `GET /lots` |
+| Painel do leiloeiro (criar lote do catálogo, cancelar, resultados e total recebido) | `/painel`, `/painel/novo-lote` — `DashboardPage.jsx`, `NewLotPage.jsx`; `GET /me/lots` |
+| Sala do lote ao vivo (lance atual, histórico, posição, cronômetro, ganhando/superado, sem recarregar) | `/lotes/:id` — `LotRoomPage.jsx` (polling de 2 s) |
+| Carteira (total, comprometido, disponível, depósito simulado) | `/carteira` — `WalletPage.jsx`; `wallet.service.js` |
+| Meus arremates (lances, lotes vencidos, comprovante e link) | `/meus-arremates` — `MyWinsPage.jsx`; `/comprovante/:code` — `ReceiptPage.jsx` |
+| Página de auditoria pública (íntegro ou adulterado) | `/auditoria/:id` — `AuditPage.jsx`; `GET /audit/:lotId` |
+| Mensagem clara para cada lance recusado | `bid.service.js` (mensagens) + toasts da sala; ver [Regras de lance](#regras-de-lance) |
+| Funcionar mesmo com a API externa fora | Snapshot da obra no banco ao criar o lote (`lot.service.js`); timeout de 5 s no catálogo |
+| Lance só em lote ao vivo; mínimo inicial / atual + incremento; líder não cobre o próprio lance | `bid.service.js` |
+| Saldo comprometido (disponível = total − comprometido) | `wallet.service.js` (calculado, nunca gravado) |
+| Anti-sniping (+2 min nos 2 minutos finais) | `bid.service.js` |
+| Liquidação (débito, crédito, comprovante; sem lances fecha sem vencedor) | `settlement.service.js`, `jobs/settlement.job.js` |
+| Histórico à prova de adulteração (técnica explicada) | `hashChain.service.js`, `audit.service.js`; ver [Auditoria](#auditoria-à-prova-de-adulteração) |
+| Privacidade (sem dados pessoais na auditoria e no comprovante) | Apelido `Licitante #XXXXXX` (HMAC); ver [Privacidade](#privacidade) |
+| Dados de teste (1 leiloeiro, 2 licitantes, lote ao vivo com lances) | `backend/prisma/seed.js`; ver [Seed e credenciais](#seed-e-credenciais) |
+| README detalhado | Este arquivo |
+| Opcional: busca e filtro de lotes | Vitrine (`ShowcasePage.jsx`); `GET /lots?search=&minPrice=&maxPrice=` |
+| Opcional: cancelamento com estorno automático | `lot.service.cancelLot`; ver [Cancelamento com estorno](#cancelamento-com-estorno) |
+| Opcional: Docker Compose | `docker-compose.yml`; ver [Como rodar localmente](#como-rodar-localmente) |
+| Opcional: testes automatizados | `backend/tests/` (Jest + Supertest); ver [Testes](#testes) |
+| Opcional: dark mode | `ThemeContext.jsx`, `styles/tokens.css` (toggle no cabeçalho) |
 
 ## Stack
 
 | Camada | Tecnologias |
 |---|---|
-| Back-end | Node.js 20, Express 5, Prisma 5, PostgreSQL 16, JWT + bcrypt |
+| Back-end | Node.js 22, Express 5, Prisma 5, PostgreSQL 16, JWT + bcrypt |
 | Testes | Jest + Supertest (banco de testes separado) |
 | Front-end | React 19, Vite 7, React Router 7, CSS puro com variáveis (tema claro/escuro) |
-| Local | Docker Compose (PostgreSQL) |
+| Local | Docker Compose (Postgres + API + front) |
 
 Monorepo: `backend/` e `frontend/`.
 
@@ -59,7 +89,7 @@ Arquivos: `docker-compose.yml`, `backend/Dockerfile`, `backend/docker-entrypoint
 
 ### Opção 2 — API e front no Node, só o banco no Docker
 
-Pré-requisitos: Node.js 20+, Docker e Docker Compose.
+Pré-requisitos: Node.js 22+, Docker e Docker Compose.
 
 ```bash
 # 1. Só o banco (PostgreSQL na porta 5434)
@@ -106,7 +136,7 @@ Back-end (`backend/.env`):
 | `APP_URL` | não (1ª origem do `CORS_ORIGIN`) | URL pública do front, usada nos links dos e-mails |
 | `EMAIL_ENABLED` | não (`false`) | `true` liga os e-mails transacionais |
 | `RESEND_API_KEY` | não | Chave do Resend. Sem ela (ou com `EMAIL_ENABLED=false`), os envios são ignorados com log |
-| `EMAIL_FROM` | não (`onboarding@resend.dev`) | Remetente, de um domínio verificado no Resend |
+| `EMAIL_FROM` | não (`Casa de Leilões <onboarding@resend.dev>`) | Remetente com nome, ex.: `Casa de Leilões <leiloes@seudominio.com>` (domínio verificado no Resend) |
 | `ANTHROPIC_API_KEY` | não | Chave da API da Anthropic para o assistente. Sem ela, `POST /assistant/chat` responde 503 e o resto do site funciona normalmente |
 | `ANTHROPIC_CHAT_MODEL` | não (`claude-haiku-5-5`) | Modelo usado pelo assistente |
 
@@ -155,11 +185,22 @@ Os testes usam um banco separado, `leiloes_test`, no mesmo container. Ele é rec
 e há uma trava que impede rodar os testes contra um banco cujo nome não termine em `_test`.
 O job de liquidação não roda nos testes: só o `server.js` o inicia, e os testes importam apenas o `app.js`.
 
-Cobertura: lances (todas as regras de recusa, anti-sniping, concorrência com `FOR UPDATE`), carteira
-(comprometido e liberação ao ser superado), liquidação (com e sem lances, débito/crédito, comprovante,
-idempotência, lance × liquidação simultâneos), auditoria (alteração, remoção e inserção direto no banco)
-e privacidade. Extras: o documento OpenAPI (válido e cobrindo todas as rotas), e-mails (Resend
-simulado) e assistente (API da Anthropic simulada). **Nenhum teste chama serviço pago.**
+**122 testes** em 11 arquivos. Cobertura:
+- **Lances:** todas as regras de recusa, anti-sniping e concorrência com `FOR UPDATE`.
+- **Carteira:** comprometido e liberação ao ser superado.
+- **Liquidação:** com e sem lances, débito/crédito, comprovante, idempotência e lance × liquidação
+  simultâneos.
+- **Cancelamento com estorno:** liberação do comprometido, REFUND informativo, lance × cancelamento
+  simultâneos e recusas.
+- **Auditoria:** alteração, remoção e inserção direto no banco.
+- **Autenticação:** limites de senha (7 e 73 recusados, 8 e 72 aceitos), hash bcrypt e login.
+- **Privacidade.**
+- **Extras:**
+  - o documento OpenAPI (válido e cobrindo todas as rotas);
+  - e-mails, com o Resend simulado (incluindo os avisos ao leiloeiro e a janela de 15 min do resumo);
+  - assistente, com a API da Anthropic simulada.
+
+**Nenhum teste chama serviço pago.**
 
 ## Endpoints
 
@@ -287,6 +328,7 @@ de um lote para outro. Sala, auditoria e comprovante nunca expõem nome, e-mail 
 | **Seu lote foi encerrado** | Toda liquidação | Leiloeiro | Vendido (valor, apelido do arrematante, link do comprovante) ou "encerrado sem lances" |
 | **Seu lote começou a receber lances** | 1º lance do lote | Leiloeiro | Valor, apelido do licitante, tempo restante e link da sala |
 | **Resumo de lances** | No máximo 1 a cada 15 min por lote | Leiloeiro | Lances novos desde o último aviso, lance atual, apelido de quem lidera, total, tempo restante e link da sala |
+| **Lote cancelado** | Cancelamento de lote com lances | Cada licitante do lote | Aviso do cancelamento; para quem liderava, o valor que voltou ao saldo disponível; link da vitrine |
 
 **Avisos de lance para o leiloeiro:**
 - O e-mail do 1º lance sai na hora (depois do commit, em segundo plano).
@@ -406,6 +448,8 @@ Pontos principais:
   - Nenhum `alert`/`confirm`. Ações importantes passam por um `<ConfirmDialog>` acessível (Esc,
     clique fora, foco preso e devolvido ao botão de origem) e o resultado aparece em toasts.
   - Botões ficam desabilitados com spinner durante a requisição.
+  - Senha de 8 a 72 caracteres (72 é o limite do bcrypt), validada no front antes de enviar e no
+    back, com botão de mostrar/ocultar (`PasswordInput.jsx`).
 - **Tema**:
   - Todas as cores ficam em variáveis CSS (`src/styles/tokens.css`).
   - Na primeira visita, o site segue `prefers-color-scheme`; depois vale a escolha salva no `localStorage`.
@@ -505,5 +549,7 @@ npm run db:seed        # a trava impede rodar de novo com o banco populado
   e não é compartilhado entre instâncias. Para várias instâncias, o caminho seria um store no Redis.
 - O assistente pode errar como qualquer modelo de linguagem. O prompt restringe as respostas às
   regras do site, mas a fonte de verdade continua sendo o back-end (a IA não decide nada).
+- Os e-mails podem cair no spam no início: o domínio remetente é novo e ainda não tem reputação.
+  SPF e DKIM estão configurados; DMARC é recomendado.
 - O CORS aceita só as origens listadas em `CORS_ORIGIN`: os *preview deployments* da Vercel
   (URLs por branch) não acessam a API, a menos que sejam adicionados à lista.

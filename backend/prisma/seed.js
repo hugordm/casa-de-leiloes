@@ -198,7 +198,12 @@ async function main() {
     { bidder: ana, amountCents: 160000, createdAt: ago(DAY + 2 * HOUR) },
   ]);
   // Liquida com o serviço real: débito, crédito e comprovante.
-  const { receiptCode } = await settlementService.settleLot(ended.id);
+  await settlementService.settleLot(ended.id);
+  // O código é lido do banco (e não do retorno do settleLot) porque, se a API estiver no ar
+  // apontando para o mesmo banco, o job de liquidação dela pode liquidar o lote #4 antes desta
+  // linha. Aí o settleLot devolve "já liquidado" (sem código), mas o comprovante existe.
+  const receipt = await prisma.receipt.findUnique({ where: { lotId: ended.id } });
+  const receiptCode = receipt ? receipt.code : '(não encontrado: confira o lote #4)';
 
   console.log(`
 Seed concluído. Senha de todos os usuários: ${SEED_PASSWORD}
