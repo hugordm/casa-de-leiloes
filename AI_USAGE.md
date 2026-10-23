@@ -1,6 +1,8 @@
 # Uso de IA no projeto
 
-Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que foi revisado/ajustado por mim.
+Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/ajustado por mim.
+
+**Como trabalhei:** usei o Claude (chat) para entender o desafio, planejar a arquitetura e escrever o `CLAUDE.md`, a especificação que guiou a implementação. A implementação foi feita com o Claude Code, uma fase por vez. Em cada fase, li o plano antes do código, testei manualmente (curl, Prisma Studio, navegador e o site no ar), conferi o resultado com o PDF do teste e só então fiz o commit. Também decidi o que entrava e o que ficava de fora (ver "Funcionalidade iniciada e descartada").
 
 ## Fase 1 — Setup
 
@@ -15,7 +17,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   `AIC-User-Agent` (desafio do Cloudflare) — será tratado na Fase 3.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Subi o banco com Docker Compose, testei `GET /health` e uma rota inexistente (404 com mensagem em português).
+- Conferi os dados do seed no Prisma Studio (3 usuários, 3 lotes, 2 depósitos; valores em centavos e senhas só como hash).
+- Revisei o schema contra os requisitos do PDF.
 
 ## Fase 2 — Auth + middlewares + papéis
 
@@ -33,7 +37,8 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   adulterado/expirado, usuário inexistente, papel errado).
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Testei com curl: rota sem token (401), com token (200, sem `passwordHash` na resposta), papel errado (403) e senha errada (mensagem genérica).
+- Inspecionei o JWT no jwt.io para confirmar que ele leva só o id e o papel.
 
 ## Fase 3 — Catálogo + lotes + listagem
 
@@ -53,7 +58,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   e vitrine funcionando com o catálogo fora do ar.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Testei a vitrine e a busca no catálogo com curl.
+- Notei que o lote "ao vivo" do seed terminava em 2 horas e estaria encerrado quando o avaliador abrisse o deploy; pedi para ele durar 30 dias (feito na Fase 5).
+- Pedi que `GET /lots/:id` aceitasse token opcional, para a sala mostrar "você está ganhando" e a posição sem expor outros licitantes.
 
 ## Fase 4 — Lances + carteira + anti-sniping (com testes)
 
@@ -78,7 +85,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   **concorrência** (validado removendo o `FOR UPDATE`: os testes de concorrência passam a falhar).
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Rodei os testes (27 passando).
+- Pedi um teste de dois lances simultâneos e a remoção das rotas temporárias `/dev/*`.
+- Estudei a ordem das travas (lote → usuário) para entender por que ela evita deadlock.
 
 ## Fase 5 — Liquidação + comprovante + corrente de hashes + auditoria (com testes)
 
@@ -103,7 +112,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   selo, os testes correspondentes falham.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Defini requisitos extras: liquidação com a mesma trava dos lances e reconferência do fim, job fora dos testes, seed com lote ao vivo de 30 dias e lote já liquidado.
+- Rodei os testes (55 passando).
+- Testei a auditoria fraudando um lance direto no banco (`UPDATE` no valor do lance 2): a API respondeu `intact: false`, `brokenAtSeq: 2`. Depois restaurei os dados com o seed.
 
 ## Fase 6 — Front-end (React + Vite + React Router)
 
@@ -126,7 +137,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   cronômetro quebrando linha; histórico de lances apertado no celular.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Defini os padrões de interface: nenhum `alert`/`confirm` do navegador (modal próprio e toasts), botões desabilitados durante a requisição, dark mode seguindo a preferência do sistema.
+- Resolvi um problema de ambiente: o disco do sistema estava 100% cheio; movi os dados do Docker para a partição `/home`, validei a auditoria e só então apaguei a cópia antiga.
+- Teste no navegador: _(a preencher)_
 
 ## Fase 7 — Deploy (Neon + Render + Vercel)
 
@@ -146,7 +159,12 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   íntegra, redeploy sem migrations pendentes); CORS com origem permitida/negada e preflight.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Troquei o banco do Render pelo Neon, porque o banco gratuito do Render expira em 30 dias e não tem backup.
+- Coloquei o banco na mesma região da API (EUA, Virginia), porque um lance faz várias consultas e a latência que importa é entre API e banco.
+- Criei o repositório e configurei Neon, Render e Vercel nos painéis.
+- Corrigi dois erros de build lendo o log do Render: o Build Command com texto grudado (`render-buildyarn`) e a URL do banco incompleta (erro P1013).
+- Redefini a senha do banco no Neon depois de expô-la sem querer.
+- Rodei o seed em produção e validei `/health`, `/audit/1` e `/audit/4` (íntegros) e a vitrine na Vercel.
 
 ## Fase 8 — Extras
 
@@ -175,7 +193,8 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 - `tests/email.test.js` com o cliente do Resend simulado.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Testei em produção com contas reais (dois licitantes e um leiloeiro, usando alias do Gmail): "Você foi superado", "Você venceu" e "Seu lote foi encerrado" chegaram, sem nome nem e-mail de outros licitantes.
+- Ajustei o `EMAIL_FROM` para exibir "Casa de Leilões" como remetente e marquei os primeiros e-mails como "não é spam" (domínio novo).
 
 ### Extra 3 — Assistente (chat flutuante)
 
@@ -195,7 +214,8 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   resposta da IA simulada no navegador para não gastar créditos.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Deixei o modelo configurável por variável (`ANTHROPIC_CHAT_MODEL`).
+- Testes do assistente: _(a preencher)_
 
 ### Ajuste — regra de senha (8 a 72 caracteres) e botão mostrar/ocultar
 
@@ -211,7 +231,9 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   da API" do rodapé em algumas larguras.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Pedi a regra de no mínimo 8 caracteres, que estava em 6, diferente da especificação.
+- Cheguei a considerar um máximo de 15; mantive 72 depois de entender que senhas longas são mais seguras e que 72 é o limite do bcrypt.
+- Pedi o botão de mostrar/ocultar senha e conferi os testes de limite (7 e 73 recusados, 8 e 72 aceitos).
 
 ### Ajuste — e-mails de lances para o leiloeiro
 
@@ -225,7 +247,8 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   Validados por mutação: com intervalo de 10 min ou sem a condição da reserva, os testes falham.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- A ideia foi minha. Para não virar spam, defini: e-mail no 1º lance e, depois, no máximo um resumo a cada 15 minutos por lote, identificando licitantes só por apelido.
+- Testei em produção: o aviso do 1º lance chegou às 17:54 e o resumo às 18:10, com o número de lances novos e o apelido de quem lidera.
 
 ### Opcional — cancelamento com estorno automático
 
@@ -243,7 +266,8 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 - Swagger, README e system prompt do assistente atualizados.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Pedi depois de conferir o projeto contra os opcionais do PDF.
+- Teste em produção: _(a preencher)_
 
 ### Opcional — Docker Compose completo
 
@@ -258,7 +282,12 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
   navegador) e 2ª subida (dados mantidos, seed ignorado). Depois, tudo do teste foi removido.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Pedi depois de conferir o projeto contra os opcionais do PDF (o compose subia só o banco).
+- Teste local: _(a preencher)_
+
+## Funcionalidade iniciada e descartada
+
+Comecei a implementar "Esqueci minha senha", mas parei ao reler o PDF: recuperação de senha está em "Não precisa fazer". Desfiz tudo antes de qualquer commit (`git restore` e remoção dos arquivos novos), regenerei o Prisma Client (os testes quebraram porque ele ainda refletia o schema da tarefa cancelada) e removi do banco local a migration que já tinha sido aplicada. Os testes voltaram a passar e nada chegou à produção.
 
 ## Uso de IA no produto (não só no desenvolvimento)
 
