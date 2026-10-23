@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router';
+import { apiUrl } from '../api/client';
 import { Header } from './Header';
 
 // Moldura comum a todas as páginas: cabeçalho, conteúdo e rodapé.
@@ -20,7 +21,12 @@ export function Layout() {
               Art Institute of Chicago
             </a>
           </p>
-          <p>Lances auditáveis por corrente de hashes HMAC-SHA256</p>
+          <p>
+            Lances auditáveis por corrente de hashes HMAC-SHA256 ·{' '}
+            <a href={apiUrl('/docs')} target="_blank" rel="noreferrer">
+              Documentação da API
+            </a>
+          </p>
         </div>
       </footer>
     </div>

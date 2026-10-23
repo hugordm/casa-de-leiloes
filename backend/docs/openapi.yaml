@@ -1,0 +1,880 @@
+openapi: 3.0.3
+info:
+  title: Casa de Leilões — API
+  version: 1.0.0
+  description: |
+    API da Casa de Leilões (teste técnico Verzel): leilões de obras do Art Institute of Chicago,
+    lances com carteira simulada, liquidação automática, comprovante público e auditoria
+    à prova de adulteração (corrente de hashes HMAC-SHA256).
+
+    **Convenções**
+    - Dinheiro sempre em **centavos** (inteiros). Ex.: `105000` = R$ 1.050,00.
+    - Datas em ISO 8601 (UTC).
+    - Erros sempre no formato `{ "error": { "code": "...", "message": "..." } }`, com a mensagem
+      em português pronta para exibir ao usuário.
+    - Autenticação: `Authorization: Bearer <token>` (obtido em `/auth/login` ou `/auth/register`).
+      Para testar aqui, faça login, copie o `token` e clique em **Authorize**.
+
+    **Papéis:** `BIDDER` (licitante) dá lances e tem carteira; `AUCTIONEER` (leiloeiro) cria e
+    cancela lotes. Visitantes (sem login) acessam vitrine, sala, auditoria e comprovantes.
+servers:
+  - url: /
+    description: Este servidor
+tags:
+  - name: Sistema
+  - name: Autenticação
+  - name: Lotes
+  - name: Lances
+  - name: Catálogo
+  - name: Carteira
+  - name: Minha conta
+  - name: Público
+    description: Auditoria, comprovante e imagens (sem login)
+
+paths:
+  /health:
+    get:
+      tags: [Sistema]
+      summary: Saúde da API e do banco
+      responses:
+        '200':
+          description: API e banco respondendo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: ok }
+                  time: { type: string, format: date-time }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------- Autenticação ----------------
+  /auth/register:
+    post:
+      tags: [Autenticação]
+      summary: Cadastro (licitante ou leiloeiro)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, example: Carla Souza }
+                email: { type: string, format: email, example: carla@exemplo.com }
+                password: { type: string, minLength: 6, maxLength: 72, example: segredo123 }
+                role:
+                  type: string
+                  enum: [BIDDER, AUCTIONEER]
+                  default: BIDDER
+      responses:
+        '201':
+          description: Conta criada; já devolve o token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                senha:
+                  value: { error: { code: VALIDATION_ERROR, message: A senha deve ter entre 6 e 72 caracteres } }
+                email:
+                  value: { error: { code: VALIDATION_ERROR, message: E-mail inválido } }
+        '409':
+          description: E-mail já cadastrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: EMAIL_IN_USE, message: Este e-mail já está cadastrado } }
+
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: ana@demo.com }
+                password: { type: string, example: senha123 }
+      responses:
+        '200':
+          description: Login feito
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          description: Campos ausentes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: VALIDATION_ERROR, message: Informe e-mail e senha } }
+        '401':
+          description: Credenciais inválidas (mesma mensagem para e-mail inexistente e senha errada)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: INVALID_CREDENTIALS, message: E-mail ou senha inválidos } }
+
+  /auth/me:
+    get:
+      tags: [Autenticação]
+      summary: Usuário logado
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Usuário do token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ---------------- Lotes ----------------
+  /lots:
+    get:
+      tags: [Lotes]
+      summary: Vitrine (lista de lotes)
+      description: Lotes cancelados nunca aparecem. Até 100 resultados.
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [live, scheduled, ended] }
+          description: live = ao vivo, scheduled = agendado, ended = encerrado
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Busca no título ou artista (sem diferenciar maiúsculas)
+        - name: minPrice
+          in: query
+          schema: { type: integer, minimum: 0 }
+          description: Preço atual mínimo, em centavos (lance atual ou, sem lances, o inicial)
+        - name: maxPrice
+          in: query
+          schema: { type: integer, minimum: 0 }
+          description: Preço atual máximo, em centavos
+      responses:
+        '200':
+          description: Lotes e a hora do servidor (para cronômetros)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lots:
+                    type: array
+                    items: { $ref: '#/components/schemas/Lot' }
+                  serverTime: { type: string, format: date-time }
+        '400':
+          description: Filtro inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: VALIDATION_ERROR, message: 'Filtro de status inválido (use live, scheduled ou ended)' } }
+    post:
+      tags: [Lotes]
+      summary: Criar lote (leiloeiro)
+      description: |
+        Envie só o `externalId` da obra (de `/catalog/search`). O servidor busca a obra na API do
+        Art Institute e **copia** título, artista, imagem e atributos para o banco (snapshot):
+        depois disso o lote não depende mais da API externa.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalId, startingBidCents, minIncrementCents, endsAt]
+              properties:
+                externalId: { type: integer, example: 16568 }
+                startingBidCents: { type: integer, minimum: 1, maximum: 100000000, example: 50000 }
+                minIncrementCents: { type: integer, minimum: 1, maximum: 100000000, example: 2000 }
+                startsAt:
+                  type: string
+                  format: date-time
+                  description: Opcional; padrão = agora. Não pode estar no passado.
+                endsAt:
+                  type: string
+                  format: date-time
+                  description: Entre 5 minutos e 30 dias depois do início.
+                  example: '2026-11-01T22:00:00.000Z'
+      responses:
+        '201':
+          description: Lote criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lot: { $ref: '#/components/schemas/Lot' }
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                duracao:
+                  value: { error: { code: VALIDATION_ERROR, message: O leilão deve durar pelo menos 5 minutos } }
+                inicio:
+                  value: { error: { code: VALIDATION_ERROR, message: A data de início não pode estar no passado } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Obra não existe no catálogo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: ARTWORK_NOT_FOUND, message: Obra não encontrada no catálogo } }
+        '502': { $ref: '#/components/responses/CatalogUnavailable' }
+
+  /lots/{id}:
+    get:
+      tags: [Lotes]
+      summary: Sala do lote
+      description: |
+        Público. Se for chamado com o token de um **licitante**, inclui o bloco `me` com a situação
+        dele (ganhando, superado, venceu, perdeu) e a posição. Se o lote já venceu e ainda não foi
+        liquidado, a liquidação acontece nesta chamada (sob demanda). Token inválido é tratado
+        como visitante.
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/LotId'
+      responses:
+        '200':
+          description: Lote com últimos lances (só apelidos)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lot: { $ref: '#/components/schemas/LotDetail' }
+                  serverTime: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/LotNotFound' }
+
+  /lots/{id}/cancel:
+    post:
+      tags: [Lotes]
+      summary: Cancelar lote (leiloeiro dono, sem lances)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/LotId'
+      responses:
+        '200':
+          description: Lote cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lot: { $ref: '#/components/schemas/Lot' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Não é leiloeiro, ou o lote é de outro leiloeiro
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                papel:
+                  value: { error: { code: FORBIDDEN, message: Seu perfil não tem permissão para esta ação } }
+                dono:
+                  value: { error: { code: NOT_LOT_OWNER, message: Você só pode cancelar os seus próprios lotes } }
+        '404': { $ref: '#/components/responses/LotNotFound' }
+        '409':
+          description: Estado do lote não permite cancelar
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                comLances:
+                  value: { error: { code: LOT_HAS_BIDS, message: Não é possível cancelar um lote que já recebeu lances } }
+                encerrado:
+                  value: { error: { code: LOT_ENDED, message: Lote encerrado não pode ser cancelado } }
+                jaCancelado:
+                  value: { error: { code: LOT_ALREADY_CANCELLED, message: Este lote já foi cancelado } }
+
+  # ---------------- Lances ----------------
+  /lots/{id}/bids:
+    post:
+      tags: [Lances]
+      summary: Dar lance (licitante)
+      description: |
+        Processado numa transação com a linha do lote e a do usuário travadas
+        (`SELECT ... FOR UPDATE`). Validações, nesta ordem:
+        1. lote inexistente ou cancelado → 404 "Lote não encontrado"
+        2. antes do início → 409 "Lote ainda não iniciado"
+        3. depois do fim → 409 "Lote encerrado"
+        4. usuário não é licitante → 403
+        5. já é o líder → 409 "Você já está ganhando"
+        6. abaixo do mínimo (inicial, ou atual + incremento) → 400 "Lance abaixo do mínimo (mínimo: R$ X)"
+        7. acima do saldo disponível → 400 "Saldo insuficiente"
+
+        **Anti-sniping:** lance com menos de 2 minutos restantes estende o fim em +2 minutos
+        (`extended: true`).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/LotId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountCents]
+              properties:
+                amountCents: { type: integer, minimum: 1, example: 105000 }
+      responses:
+        '201':
+          description: Lance aceito
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bid: { $ref: '#/components/schemas/PublicBid' }
+                  extended:
+                    type: boolean
+                    description: true se o anti-sniping estendeu o fim
+                  lot: { $ref: '#/components/schemas/Lot' }
+              example:
+                bid: { seq: 2, bidderAlias: 'Licitante #2E32B4', amountCents: 105000, createdAt: '2026-10-23T12:45:16.280Z' }
+                extended: false
+                lot: { id: 1, title: Nighthawks, currentBidCents: 105000, minNextBidCents: 110000, bidCount: 2 }
+        '400':
+          description: Valor inválido, abaixo do mínimo ou sem saldo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                abaixoDoMinimo:
+                  summary: Lance abaixo do mínimo
+                  value: { error: { code: BID_TOO_LOW, message: 'Lance abaixo do mínimo (mínimo: R$ 1.050,00)' } }
+                saldoInsuficiente:
+                  summary: Saldo insuficiente
+                  value: { error: { code: INSUFFICIENT_BALANCE, message: Saldo insuficiente } }
+                valorInvalido:
+                  summary: Valor que não é inteiro em centavos
+                  value: { error: { code: INVALID_AMOUNT, message: Informe um valor de lance válido } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Leiloeiro não dá lance
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                rota:
+                  summary: Barrado pelo middleware de papel
+                  value: { error: { code: FORBIDDEN, message: Seu perfil não tem permissão para esta ação } }
+                servico:
+                  summary: Barrado pela regra 4 do serviço
+                  value: { error: { code: ROLE_CANNOT_BID, message: Leiloeiros não podem dar lances } }
+        '404': { $ref: '#/components/responses/LotNotFound' }
+        '409':
+          description: Estado do lote ou do licitante não permite o lance
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                naoIniciado:
+                  summary: Lote ainda não iniciado
+                  value: { error: { code: LOT_NOT_STARTED, message: Lote ainda não iniciado } }
+                encerrado:
+                  summary: Lote encerrado
+                  value: { error: { code: LOT_ENDED, message: Lote encerrado } }
+                jaGanhando:
+                  summary: Líder tentando cobrir o próprio lance
+                  value: { error: { code: ALREADY_LEADING, message: Você já está ganhando } }
+
+  # ---------------- Catálogo ----------------
+  /catalog/search:
+    get:
+      tags: [Catálogo]
+      summary: Buscar obras no Art Institute of Chicago (leiloeiro)
+      description: Chamada externa com timeout de 5 s. As imagens voltam pelo proxy `/images/aic/{imageId}`.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+          example: monet
+      responses:
+        '200':
+          description: Até 20 obras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Artwork' }
+        '400':
+          description: Termo curto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: VALIDATION_ERROR, message: Digite pelo menos 2 caracteres para buscar } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/CatalogUnavailable' }
+
+  # ---------------- Carteira ----------------
+  /wallet:
+    get:
+      tags: [Carteira]
+      summary: Carteira do licitante
+      description: |
+        `committedCents` = soma dos lances em que o usuário lidera lotes ativos (calculado, nunca
+        gravado). `availableCents` = `balanceCents` − `committedCents`.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Saldos e extrato (últimas 50 movimentações)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Wallet' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /wallet/deposit:
+    post:
+      tags: [Carteira]
+      summary: Depósito simulado (licitante)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountCents]
+              properties:
+                amountCents: { type: integer, minimum: 1, maximum: 10000000, example: 50000 }
+      responses:
+        '201':
+          description: Carteira atualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Wallet' }
+        '400':
+          description: Valor inválido ou teto de saldo atingido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                invalido:
+                  value: { error: { code: INVALID_DEPOSIT, message: 'Valor de depósito inválido (em centavos, entre R$ 0,01 e R$ 100.000,00)' } }
+                teto:
+                  value: { error: { code: BALANCE_LIMIT, message: Limite de saldo da carteira atingido } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ---------------- Minha conta ----------------
+  /me/bids:
+    get:
+      tags: [Minha conta]
+      summary: Meus lances e arremates (licitante)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Lotes em que o usuário deu lance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lot: { $ref: '#/components/schemas/Lot' }
+                        myBestBidCents: { type: integer, example: 120000 }
+                        isLeader: { type: boolean }
+                        won: { type: boolean }
+                        receiptCode:
+                          type: string
+                          nullable: true
+                          description: Código do comprovante, só nos lotes vencidos pelo usuário
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /me/lots:
+    get:
+      tags: [Minha conta]
+      summary: Painel do leiloeiro (resultados e total recebido)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Lotes do leiloeiro com resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalReceivedCents: { type: integer, example: 195000 }
+                  soldCount: { type: integer, example: 2 }
+                  lots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lot: { $ref: '#/components/schemas/Lot' }
+                        result:
+                          type: string
+                          enum: [scheduled, live, awaiting_settlement, sold, unsold, cancelled]
+                        winnerAlias: { type: string, nullable: true, example: 'Licitante #E6E573' }
+                        receiptCode: { type: string, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ---------------- Público ----------------
+  /audit/{lotId}:
+    get:
+      tags: [Público]
+      summary: Auditoria da corrente de lances
+      description: |
+        Recalcula a corrente na ordem de `seq`: seq contíguo, `prevHash`, HMAC de cada lance,
+        autor (via apelido), fim da corrente, selo do lote e coerência do lance atual/vencedor.
+        `brokenAtSeq` indica o primeiro lance em que a corrente quebra.
+      parameters:
+        - name: lotId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Resultado da verificação
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Audit' }
+              examples:
+                integro:
+                  summary: Corrente íntegra
+                  value:
+                    lot: { id: 1, title: Nighthawks, status: ACTIVE, displayStatus: live, bidCount: 1, lastHash: dff39e51…, seal: b3fb1ccf… }
+                    intact: true
+                    message: 'Corrente íntegra: nenhum lance foi alterado, removido ou inserido'
+                    bids:
+                      - { seq: 1, bidderAlias: 'Licitante #D9F0B7', amountCents: 100000, createdAt: '2026-10-23T11:32:35.664Z', prevHash: 'GENESIS:1', hash: dff39e51…, valid: true }
+                adulterado:
+                  summary: Valor do lance 2 alterado no banco
+                  value:
+                    intact: false
+                    brokenAtSeq: 2
+                    reason: HASH_MISMATCH
+                    message: 'Os dados do lance #2 foram alterados'
+        '404': { $ref: '#/components/responses/LotNotFound' }
+
+  /receipts/{code}:
+    get:
+      tags: [Público]
+      summary: Comprovante de arremate
+      description: Identifica o vencedor só pelo apelido no lote (sem nome ou e-mail).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, maxLength: 64 }
+          example: YhJzBeVGn-6m9h7v
+      responses:
+        '200':
+          description: Comprovante
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receipt: { $ref: '#/components/schemas/Receipt' }
+        '404':
+          description: Código inexistente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: RECEIPT_NOT_FOUND, message: Comprovante não encontrado } }
+
+  /images/aic/{imageId}:
+    get:
+      tags: [Público]
+      summary: Imagem da obra (proxy do Art Institute)
+      description: |
+        O servidor de imagens da AIC bloqueia acesso direto do navegador (403). A API busca a
+        imagem com o cabeçalho `AIC-User-Agent` e devolve com cache de 7 dias. Só aceita ids no
+        formato UUID (não é um proxy aberto).
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+          example: 831a05de-d3f6-f4fa-a460-23008dd58dda
+      responses:
+        '200':
+          description: Imagem JPEG
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '404':
+          description: Id inválido ou imagem inexistente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: IMAGE_NOT_FOUND, message: Imagem não encontrada } }
+        '502':
+          description: AIC indisponível
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: { code: IMAGE_UNAVAILABLE, message: Imagem indisponível no momento } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de `/auth/login`. Expira em 1 dia (padrão).
+
+  parameters:
+    LotId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+      example: 1
+
+  responses:
+    Unauthorized:
+      description: Sem token, token inválido/expirado ou usuário inexistente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            semToken:
+              value: { error: { code: UNAUTHENTICATED, message: Faça login para continuar } }
+            tokenInvalido:
+              value: { error: { code: INVALID_TOKEN, message: Sessão inválida ou expirada. Faça login novamente } }
+    Forbidden:
+      description: Papel do usuário não permite a ação
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: FORBIDDEN, message: Seu perfil não tem permissão para esta ação } }
+    LotNotFound:
+      description: Lote inexistente (ou cancelado, no caso de lances)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: LOT_NOT_FOUND, message: Lote não encontrado } }
+    CatalogUnavailable:
+      description: API do Art Institute fora do ar, lenta (> 5 s) ou bloqueando
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: CATALOG_UNAVAILABLE, message: O catálogo de obras está indisponível no momento. Tente novamente em instantes. } }
+    InternalError:
+      description: Erro inesperado (detalhes só no log do servidor)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: INTERNAL_ERROR, message: Erro interno. Tente novamente. } }
+
+  schemas:
+    Error:
+      type: object
+      description: Formato padrão de TODOS os erros da API
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Código estável para o front/testes
+              example: BID_TOO_LOW
+            message:
+              type: string
+              description: Mensagem em português para exibir ao usuário
+              example: 'Lance abaixo do mínimo (mínimo: R$ 1.050,00)'
+
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: Ana Licitante }
+        email: { type: string, example: ana@demo.com }
+        role: { type: string, enum: [BIDDER, AUCTIONEER] }
+        createdAt: { type: string, format: date-time }
+
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
+        user: { $ref: '#/components/schemas/User' }
+
+    Artwork:
+      type: object
+      description: Obra do catálogo (formato também usado no snapshot do lote)
+      properties:
+        externalId: { type: integer, example: 16568 }
+        title: { type: string, example: Water Lilies }
+        artist: { type: string, example: 'Claude Monet (French, 1840–1926)' }
+        imageUrl: { type: string, nullable: true, example: /images/aic/3c27b499-af56-f0d5-93b5-a7f2f1ad5813 }
+        attributes:
+          type: object
+          properties:
+            date: { type: string, nullable: true, example: '1906' }
+            medium: { type: string, nullable: true, example: Oil on canvas }
+
+    Lot:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        externalId: { type: integer, example: 111628 }
+        title: { type: string, example: Nighthawks }
+        artist: { type: string, example: 'Edward Hopper (American, 1882–1967)' }
+        imageUrl:
+          type: string
+          nullable: true
+          description: Caminho do proxy de imagens (prefixe com a URL da API)
+          example: /images/aic/831a05de-d3f6-f4fa-a460-23008dd58dda
+        attributes:
+          type: object
+          properties:
+            date: { type: string, nullable: true }
+            medium: { type: string, nullable: true }
+        startingBidCents: { type: integer, example: 100000 }
+        minIncrementCents: { type: integer, example: 5000 }
+        currentBidCents: { type: integer, nullable: true, example: 120000 }
+        minNextBidCents: { type: integer, description: Menor lance aceito agora, example: 125000 }
+        bidCount: { type: integer, example: 3 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time, description: Pode ser estendido pelo anti-sniping }
+        status: { type: string, enum: [ACTIVE, CANCELLED, SETTLED], description: Status gravado }
+        displayStatus:
+          type: string
+          enum: [scheduled, live, ended, cancelled]
+          description: Status calculado pelas datas no momento da resposta
+        finalPriceCents: { type: integer, nullable: true }
+        auctioneer:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string, example: Leiloeiro Demo }
+        createdAt: { type: string, format: date-time }
+
+    PublicBid:
+      type: object
+      description: Lance como é exposto publicamente (sem identificar o licitante)
+      properties:
+        seq: { type: integer, example: 2 }
+        bidderAlias: { type: string, example: 'Licitante #2E32B4' }
+        amountCents: { type: integer, example: 105000 }
+        createdAt: { type: string, format: date-time }
+
+    LotDetail:
+      allOf:
+        - $ref: '#/components/schemas/Lot'
+        - type: object
+          properties:
+            leaderAlias: { type: string, nullable: true }
+            winnerAlias: { type: string, nullable: true }
+            recentBids:
+              type: array
+              description: Últimos 10 lances, do mais recente para o mais antigo
+              items: { $ref: '#/components/schemas/PublicBid' }
+            me:
+              type: object
+              description: Só para licitante logado
+              properties:
+                status: { type: string, enum: [none, leading, outbid, won, lost] }
+                alias: { type: string, description: Apelido do próprio usuário neste lote }
+                myBestBidCents: { type: integer }
+                position: { type: integer, description: 1 = líder }
+                totalBidders: { type: integer }
+                receiptCode: { type: string, nullable: true, description: Só quando status = won }
+
+    Wallet:
+      type: object
+      properties:
+        balanceCents: { type: integer, example: 500000 }
+        committedCents: { type: integer, example: 120000 }
+        availableCents: { type: integer, example: 380000 }
+        transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              type: { type: string, enum: [DEPOSIT, DEBIT, CREDIT, REFUND] }
+              amountCents: { type: integer, description: Sempre positivo; o tipo indica a direção }
+              lot:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  title: { type: string }
+              createdAt: { type: string, format: date-time }
+
+    Audit:
+      type: object
+      properties:
+        lot:
+          type: object
+          properties:
+            id: { type: integer }
+            title: { type: string }
+            artist: { type: string }
+            status: { type: string, enum: [ACTIVE, CANCELLED, SETTLED] }
+            displayStatus: { type: string, enum: [scheduled, live, ended, cancelled] }
+            bidCount: { type: integer }
+            lastHash: { type: string, nullable: true }
+            seal: { type: string, nullable: true }
+        intact: { type: boolean }
+        brokenAtSeq: { type: integer, description: Primeiro lance em que a corrente quebra (ausente se íntegra) }
+        reason:
+          type: string
+          enum: [SEQ_GAP, PREV_HASH_MISMATCH, HASH_MISMATCH, BIDDER_MISMATCH, CHAIN_TAIL_MISMATCH, SEAL_MISMATCH, LOT_STATE_MISMATCH]
+        message: { type: string }
+        bids:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/PublicBid'
+              - type: object
+                properties:
+                  prevHash: { type: string }
+                  hash: { type: string }
+                  valid: { type: boolean, description: false a partir do ponto de quebra }
+
+    Receipt:
+      type: object
+      properties:
+        code: { type: string, example: YhJzBeVGn-6m9h7v }
+        amountCents: { type: integer, example: 160000 }
+        settledAt: { type: string, format: date-time }
+        winnerAlias: { type: string, example: 'Licitante #E6E573' }
+        lot:
+          type: object
+          properties:
+            id: { type: integer }
+            title: { type: string }
+            artist: { type: string }
+            imageUrl: { type: string, nullable: true }
+            attributes: { type: object }
+            bidCount: { type: integer }
+            endsAt: { type: string, format: date-time }
+        auditUrl: { type: string, description: Rota do front, example: /auditoria/4 }
+        auditApiUrl: { type: string, description: Endpoint da API, example: /audit/4 }

@@ -6,7 +6,8 @@ adulteração** dos lances.
 
 > Teste técnico Elite Dev — Verzel.
 
-**Produção:** front <https://SEU-PROJETO.vercel.app> · API <https://SUA-API.onrender.com/health>
+**Produção:** front <https://SEU-PROJETO.vercel.app> · API <https://SUA-API.onrender.com/health> ·
+**Documentação da API (Swagger):** <https://SUA-API.onrender.com/docs>
 _(links preenchidos após o deploy; veja [Deploy](#deploy))_
 
 ## Stack
@@ -115,6 +116,15 @@ idempotência, lance × liquidação simultâneos), auditoria (alteração, remo
 e privacidade.
 
 ## Endpoints
+
+📖 **Documentação interativa (Swagger UI): `GET /docs`**, em <http://localhost:3333/docs> no ambiente local.
+- Gerada de `backend/docs/openapi.yaml` (OpenAPI 3.0): todos os endpoints, autenticação Bearer,
+  exemplos de requisição e resposta (inclusive cada recusa de lance com a mensagem real) e o
+  formato padrão de erro.
+- Para testar rotas protegidas: faça `POST /auth/login`, copie o `token` e clique em **Authorize**.
+- O documento bruto fica em `GET /docs/openapi.json`.
+- Um teste (`tests/docs.test.js`) valida o arquivo e falha se alguma rota real não estiver
+  documentada, ou se algo documentado deixar de existir.
 
 | Método e rota | Acesso | Descrição |
 |---|---|---|
