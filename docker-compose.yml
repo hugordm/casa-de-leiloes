@@ -1,0 +1,23 @@
+# Ambiente local. Por enquanto só o PostgreSQL;
+# backend e frontend entram aqui nas próximas fases.
+services:
+  postgres:
+    image: postgres:16
+    container_name: leiloes_postgres
+    environment:
+      POSTGRES_USER: leiloes
+      POSTGRES_PASSWORD: leiloes
+      POSTGRES_DB: leiloes
+    ports:
+      # 5434 na máquina → 5432 no container (5432/5433 costumam estar ocupadas)
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leiloes -d leiloes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

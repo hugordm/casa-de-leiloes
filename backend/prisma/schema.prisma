@@ -1,0 +1,142 @@
+// Schema do banco da Casa de Leilões.
+// Convenções:
+// - Dinheiro SEMPRE em centavos (Int). Ex.: R$ 150,00 = 15000.
+// - Datas (DateTime) são gravadas em UTC pelo Prisma.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  AUCTIONEER // leiloeiro: cria/cancela lotes, não dá lance
+  BIDDER // licitante: deposita saldo e dá lances
+}
+
+// Status GRAVADO do lote. "agendado / ao vivo / encerrado" NÃO é gravado:
+// é calculado comparando a hora atual com startsAt e endsAt.
+enum LotStatus {
+  ACTIVE // valendo (pode estar agendado, ao vivo ou encerrado aguardando liquidação)
+  CANCELLED // cancelado pelo leiloeiro
+  SETTLED // liquidado: dinheiro já movimentado (ou encerrado sem lances)
+}
+
+enum WalletTxType {
+  DEPOSIT // depósito simulado do licitante
+  DEBIT // pagamento do arremate (sai do vencedor)
+  CREDIT // recebimento do arremate (entra para o leiloeiro)
+  REFUND // aviso de lote cancelado com lances (informativo, valor 0)
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  // Saldo TOTAL. O "comprometido" (lances em que o usuário lidera) é calculado,
+  // nunca gravado, para não dessincronizar. Disponível = total - comprometido.
+  balanceCents Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  lotsCreated  Lot[]               @relation("LotAuctioneer")
+  lotsLeading  Lot[]               @relation("LotLeader")
+  lotsWon      Lot[]               @relation("LotWinner")
+  bids         Bid[]
+  receipts     Receipt[]
+  transactions WalletTransaction[]
+}
+
+model Lot {
+  id           Int     @id @default(autoincrement())
+  auctioneerId Int
+  // Snapshot da obra copiado da API externa no momento da criação.
+  // Depois disso o lote não depende mais da API do Art Institute.
+  externalId   Int
+  title        String
+  artist       String
+  imageUrl     String?
+  attributes   Json // ex.: { date, medium }
+
+  startingBidCents  Int
+  minIncrementCents Int
+  startsAt          DateTime
+  endsAt            DateTime // pode ser estendido pelo anti-sniping
+  status            LotStatus @default(ACTIVE)
+
+  // Estado atual do pregão (null enquanto não há lances)
+  currentBidCents Int?
+  leaderId        Int?
+  bidCount        Int  @default(0)
+
+  // Resultado (preenchido na liquidação)
+  winnerId        Int?
+  finalPriceCents Int?
+
+  // Auditoria: hash do último lance da corrente e "selo" do lote
+  // (HMAC de lotId | bidCount | lastHash), que detecta remoção/inserção no fim.
+  lastHash String?
+  seal     String?
+
+  createdAt DateTime @default(now())
+
+  auctioneer   User                @relation("LotAuctioneer", fields: [auctioneerId], references: [id])
+  leader       User?               @relation("LotLeader", fields: [leaderId], references: [id])
+  winner       User?               @relation("LotWinner", fields: [winnerId], references: [id])
+  bids         Bid[]
+  receipt      Receipt?
+  transactions WalletTransaction[]
+
+  // Usado pelo job de liquidação: "lotes ACTIVE com endsAt <= agora"
+  @@index([status, endsAt])
+  @@index([auctioneerId])
+}
+
+model Bid {
+  id          Int      @id @default(autoincrement())
+  lotId       Int
+  bidderId    Int
+  amountCents Int
+  seq         Int // 1, 2, 3... dentro do lote
+  bidderAlias String // "Licitante #ab12" — nunca expomos nome/e-mail
+  createdAt   DateTime @default(now())
+  prevHash    String // hash do lance anterior (ou "GENESIS:<lotId>" no primeiro)
+  hash        String // HMAC-SHA256 encadeado
+
+  lot    Lot  @relation(fields: [lotId], references: [id])
+  bidder User @relation(fields: [bidderId], references: [id])
+
+  // Garante no banco que não existem dois lances com o mesmo seq no lote
+  @@unique([lotId, seq])
+  @@index([bidderId])
+}
+
+model Receipt {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // aleatório, usado no link público do comprovante
+  lotId       Int      @unique // um comprovante por lote (ajuda na idempotência)
+  winnerId    Int
+  amountCents Int
+  createdAt   DateTime @default(now())
+
+  lot    Lot  @relation(fields: [lotId], references: [id])
+  winner User @relation(fields: [winnerId], references: [id])
+}
+
+model WalletTransaction {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  type        WalletTxType
+  amountCents Int
+  lotId       Int?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  lot  Lot? @relation(fields: [lotId], references: [id])
+
+  @@index([userId])
+}
