@@ -207,7 +207,42 @@ async function sendDueBidDigests({ now = new Date() } = {}) {
   return { sent };
 }
 
+// ---------- Lote cancelado (para quem deu lance) ----------
+// Disparado pelo cancelLot depois do commit. Cada licitante do lote recebe um e-mail;
+// o líder (quem tinha valor comprometido) recebe também o valor liberado.
+function notifyLotCancelled(lotId) {
+  dispatch('lote cancelado', async () => {
+    const lot = await prisma.lot.findUnique({ where: { id: lotId } });
+    if (!lot || lot.status !== 'CANCELLED') return;
+
+    const bids = await prisma.bid.findMany({
+      where: { lotId },
+      distinct: ['bidderId'],
+      select: { bidder: { select: { id: true, name: true, email: true } } },
+    });
+
+    const sends = bids.map(({ bidder }) => {
+      const wasLeader = bidder.id === lot.leaderId;
+      const email = templates.lotCancelledEmail({
+        name: bidder.name,
+        lot,
+        wasLeader,
+        releasedCents: wasLeader ? lot.currentBidCents : 0,
+        showcaseUrl: `${env.APP_URL}/`,
+      });
+      return sendEmail({ to: bidder.email, ...email });
+    });
+
+    // Um e-mail falhar não impede os outros; as falhas vão para o log.
+    const results = await Promise.allSettled(sends);
+    for (const r of results) {
+      if (r.status === 'rejected') console.error('[email] falha ao enviar (lote cancelado):', r.reason.message);
+    }
+  });
+}
+
 module.exports = {
+  notifyLotCancelled,
   notifyOutbid,
   notifySettlement,
   notifyFirstBid,

@@ -144,7 +144,7 @@ simulado) e assistente (API da Anthropic simulada). **Nenhum teste chama serviç
 | `GET /lots?status=live\|scheduled\|ended&search=&minPrice=&maxPrice=` | público | Vitrine (preços em centavos) |
 | `GET /lots/:id` | público | Sala do lote; para licitante logado inclui `me` (ganhando/superado/venceu, posição) |
 | `POST /lots` | leiloeiro | Cria lote a partir de uma obra do catálogo (`externalId`) |
-| `POST /lots/:id/cancel` | leiloeiro dono | Cancela lote sem lances |
+| `POST /lots/:id/cancel` | leiloeiro dono | Cancela lote agendado ou ao vivo, mesmo com lances (estorno automático) |
 | `GET /catalog/search?q=` | leiloeiro | Busca obras na API do Art Institute |
 | `POST /lots/:id/bids` | licitante | Dá um lance `{ amountCents }` |
 | `GET /wallet`, `POST /wallet/deposit` | licitante | Carteira (total, comprometido, disponível, extrato) / depósito simulado |
@@ -182,6 +182,29 @@ na ordem lote → usuário). As validações, nesta ordem:
   - Trava: a mesma linha do lote usada pelos lances. Depois de travar, a liquidação **reconfere o
     status e o `endsAt`**, porque o anti-sniping pode ter estendido o fim.
   - É idempotente, e o `Receipt.lotId` único funciona como segunda barreira.
+
+## Cancelamento com estorno
+
+O leiloeiro dono pode cancelar um lote **agendado ou ao vivo, mesmo com lances**
+(`lot.service.cancelLot`). Lote encerrado (passou do fim, mesmo ainda não liquidado), liquidado ou
+já cancelado é recusado com 409, e lote de outro leiloeiro com 403.
+
+- **Mesma trava do lance:** `SELECT ... FOR UPDATE` na linha do lote. Se o lance chega primeiro, o
+  cancelamento já enxerga o novo líder e estorna para ele. Se o cancelamento chega primeiro, o lance
+  encontra o lote `CANCELLED` e recebe "Lote não encontrado".
+- **Estorno sem mexer no saldo total:** o comprometido é calculado só sobre lotes `ACTIVE`. Quando o
+  lote vira `CANCELLED`, o valor reservado do líder volta ao disponível sozinho. Nada havia sido
+  debitado, então `balanceCents` não muda. Uma `WalletTransaction` `REFUND` **informativa** registra
+  no extrato o valor liberado.
+- **Avisos:** depois do commit, cada licitante do lote recebe o e-mail "Lote cancelado" (o líder com
+  o valor liberado). A sala mostra "Lote cancelado" e o toast avisa o líder do estorno. O
+  `ConfirmDialog` do painel informa quantos lances serão estornados e o valor.
+- **Testes** (`tests/cancel.test.js`):
+  - estorno: libera o saldo, sem mudar o total, e cria um único REFUND;
+  - lance × cancelamento simultâneos nas duas ordens: o estorno vai sempre para quem liderava;
+  - recusas: lote encerrado, liquidado, já cancelado, outro leiloeiro e licitante;
+  - e-mails: enviados depois do commit; a falha não desfaz o cancelamento; `@demo.com` é ignorado;
+  - auditoria íntegra depois do cancelamento.
 
 ## Auditoria à prova de adulteração
 

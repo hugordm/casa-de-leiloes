@@ -227,6 +227,24 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
 
+### Opcional — cancelamento com estorno automático
+
+**Gerado com IA:**
+- `lot.service.cancelLot`: permite cancelar lote agendado/ao vivo com lances, usando a mesma trava
+  `FOR UPDATE` do lance; cria uma `WalletTransaction REFUND` informativa para o líder (o comprometido
+  é liberado sozinho, porque só soma lotes `ACTIVE`); e-mail "Lote cancelado" aos licitantes após o
+  commit.
+- Front: `ConfirmDialog` do painel avisando o estorno (quantidade de lances e valor), extrato com
+  "valor liberado" e aviso do estorno ao líder na sala.
+- `tests/cancel.test.js` (12 testes). O de lance × cancelamento alterna a ordem de disparo: na
+  primeira versão o lance sempre chegava antes, e o caminho "cancelamento primeiro" não era
+  testado. Validado por mutação: sem o `FOR UPDATE`, o estorno vai para o licitante errado e o teste
+  falha.
+- Swagger, README e system prompt do assistente atualizados.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
 ## Uso de IA no produto (não só no desenvolvimento)
 
 Além de ajudar a escrever o código, a IA também faz parte do produto: o **assistente** do site

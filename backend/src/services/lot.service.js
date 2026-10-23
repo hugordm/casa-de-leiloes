@@ -4,6 +4,7 @@ const AppError = require('../errors/AppError');
 const catalogService = require('./catalog.service');
 const settlementService = require('./settlement.service');
 const hashChain = require('./hashChain.service');
+const notifications = require('./email/notification.service');
 const { toPublicImageUrl } = require('./image.service');
 const { getDisplayStatus, getMinNextBidCents } = require('../utils/lot');
 const { isCents, parseDate, parseId } = require('../utils/validation');
@@ -118,11 +119,19 @@ async function createLot(auctioneerId, body = {}) {
 
 // ---------- Cancelamento ----------
 
+// O leiloeiro dono pode cancelar um lote agendado ou ao vivo, MESMO com lances (estorno automático):
+// - o lote vira CANCELLED. Como o "comprometido" só soma lotes ACTIVE, o valor que estava
+//   reservado do líder volta ao disponível sozinho; nada foi debitado, então o saldo total não muda;
+// - registra uma WalletTransaction REFUND para o líder, só informativa (aparece no extrato com o
+//   valor liberado; não altera balanceCents);
+// - depois do commit, avisa por e-mail quem deu lance no lote.
+// Lote encerrado (passou do fim, mesmo que ainda não liquidado) ou liquidado não pode ser cancelado.
 async function cancelLot(lotId, auctioneerId) {
-  return prisma.$transaction(async (tx) => {
-    // Trava a linha do lote até o fim da transação. Assim um lance não consegue
-    // entrar entre a verificação "não há lances" e a gravação do cancelamento
-    // (o serviço de lances trava a mesma linha).
+  const result = await prisma.$transaction(async (tx) => {
+    // Mesma trava do lance (SELECT ... FOR UPDATE na linha do lote): lance e cancelamento do
+    // mesmo lote são processados um de cada vez. Se o lance vier primeiro, o cancelamento já
+    // enxerga o novo líder e estorna para ele; se o cancelamento vier primeiro, o lance
+    // encontra o lote CANCELLED e é recusado ("Lote não encontrado").
     const locked = await tx.$queryRaw`SELECT id FROM "Lot" WHERE id = ${lotId} FOR UPDATE`;
     if (locked.length === 0) throw notFound();
 
@@ -138,17 +147,26 @@ async function cancelLot(lotId, auctioneerId) {
     if (lot.status === 'SETTLED' || now >= lot.endsAt) {
       throw new AppError(409, 'LOT_ENDED', 'Lote encerrado não pode ser cancelado');
     }
-    if (lot.bidCount > 0) {
-      throw new AppError(409, 'LOT_HAS_BIDS', 'Não é possível cancelar um lote que já recebeu lances');
-    }
 
     const updated = await tx.lot.update({
       where: { id: lotId },
       data: { status: 'CANCELLED' },
       include: includeAuctioneer,
     });
-    return serializeLot(updated, now);
+
+    // Estorno informativo para quem liderava (só ele tinha valor comprometido neste lote).
+    if (lot.leaderId && lot.currentBidCents) {
+      await tx.walletTransaction.create({
+        data: { userId: lot.leaderId, type: 'REFUND', amountCents: lot.currentBidCents, lotId },
+      });
+    }
+
+    return { lot: serializeLot(updated, now), hadBids: lot.bidCount > 0 };
   });
+
+  // Daqui para baixo a transação já foi confirmada: o e-mail sai em segundo plano.
+  if (result.hadBids) notifications.notifyLotCancelled(lotId);
+  return result.lot;
 }
 
 // ---------- Listagem (vitrine) ----------

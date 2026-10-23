@@ -16,7 +16,8 @@ const TX_LABEL = {
   DEPOSIT: { label: 'Depósito', sign: '+' },
   DEBIT: { label: 'Pagamento de arremate', sign: '−' },
   CREDIT: { label: 'Recebimento de arremate', sign: '+' },
-  REFUND: { label: 'Lote cancelado (estorno)', sign: '' },
+  // Informativo: o valor estava só comprometido (nada foi debitado), então o saldo total não muda.
+  REFUND: { label: 'Lote cancelado (valor liberado)', sign: '' },
 };
 
 export function WalletPage() {
@@ -149,6 +150,7 @@ export function WalletPage() {
                     </div>
                     <p className="statement__amount">
                       {info.sign} {formatBRL(t.amountCents)}
+                      {t.type === 'REFUND' && <small className="statement__note">liberado, sem alterar o total</small>}
                     </p>
                   </li>
                 );

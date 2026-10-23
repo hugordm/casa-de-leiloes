@@ -77,7 +77,10 @@ Encerramento e liquidação
 - A liquidação acontece uma única vez por lote; ninguém é cobrado duas vezes.
 
 Cancelamento
-- O leiloeiro só pode cancelar os próprios lotes, e apenas enquanto não houver nenhum lance e o lote não tiver terminado.
+- O leiloeiro só pode cancelar os próprios lotes, agendados ou ao vivo, mesmo que já tenham lances. Lote encerrado ou liquidado não pode ser cancelado.
+- Lote cancelado sai da vitrine e não aceita mais lances. Ninguém é cobrado e não há vencedor nem comprovante.
+- Estorno automático: o valor que estava comprometido com o lance de quem liderava volta na hora para o saldo disponível dessa pessoa. Como nada tinha sido debitado, o saldo total não muda; o extrato da Carteira mostra a linha "Lote cancelado (valor liberado)".
+- Quem deu lance no lote é avisado por e-mail (se os e-mails estiverem ativados) e vê o aviso na sala do lote.
 
 Comprovante
 - Gerado para o vencedor na liquidação, com um código único e um link público (/comprovante/código) que pode ser compartilhado.

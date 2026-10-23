@@ -58,7 +58,11 @@ export function LotRoomPage() {
           toast.success('Parabéns! Você arrematou esta obra.');
         }
         if (prev.status !== 'CANCELLED' && next.status === 'CANCELLED') {
-          toast.info('Este lote foi cancelado pelo leiloeiro.');
+          toast.info(
+            prev.me?.status === 'leading'
+              ? `Este lote foi cancelado pelo leiloeiro. Seu lance de ${formatBRL(prev.currentBidCents)} foi estornado e o valor voltou ao seu saldo disponível.`
+              : 'Este lote foi cancelado pelo leiloeiro.'
+          );
         }
       }
       previousLot.current = next;

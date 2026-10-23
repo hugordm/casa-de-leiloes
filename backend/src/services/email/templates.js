@@ -258,4 +258,40 @@ function bidDigestEmail({ name, lot, newBids, leaderAlias, now, roomUrl }) {
   return { subject: `"${lot.title}": ${label}`, html, text };
 }
 
-module.exports = { outbidEmail, wonEmail, lotEndedEmail, firstBidEmail, bidDigestEmail, formatRemaining, escapeHtml };
+// ---------- "Lote cancelado" (para quem deu lance no lote) ----------
+// O líder recebe a informação do valor liberado; os demais, só o aviso.
+function lotCancelledEmail({ name, lot, wasLeader, releasedCents, showcaseUrl }) {
+  const money = wasLeader
+    ? `O valor de ${formatBRL(releasedCents)}, que estava comprometido com o seu lance, voltou para o seu saldo disponível. Nada foi debitado.`
+    : 'Nada foi debitado do seu saldo.';
+  const html = layout({
+    preheader: wasLeader ? `${formatBRL(releasedCents)} voltaram para o seu saldo disponível.` : 'O leilão foi encerrado sem vencedor.',
+    title: 'Lote cancelado',
+    bodyHtml: [
+      paragraph(`${escapeHtml(firstName(name))}, o leiloeiro cancelou o leilão de <strong>${escapeHtml(lot.title)}</strong>, de ${escapeHtml(lot.artist)}, em que você deu lance.`),
+      paragraph(money),
+      button(showcaseUrl, 'Ver outros lotes'),
+    ].join('\n'),
+  });
+  const text = [
+    `${firstName(name)}, o leiloeiro cancelou o leilão de "${lot.title}", de ${lot.artist}, em que você deu lance.`,
+    '',
+    money,
+    '',
+    `Outros lotes: ${showcaseUrl}`,
+    '',
+    '— Casa de Leilões',
+  ].join('\n');
+  return { subject: `Lote cancelado: "${lot.title}"`, html, text };
+}
+
+module.exports = {
+  outbidEmail,
+  wonEmail,
+  lotEndedEmail,
+  firstBidEmail,
+  bidDigestEmail,
+  lotCancelledEmail,
+  formatRemaining,
+  escapeHtml,
+};

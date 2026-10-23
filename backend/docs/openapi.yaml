@@ -271,7 +271,20 @@ paths:
   /lots/{id}/cancel:
     post:
       tags: [Lotes]
-      summary: Cancelar lote (leiloeiro dono, sem lances)
+      summary: Cancelar lote (leiloeiro dono), com estorno automático dos lances
+      description: |
+        Lote **agendado ou ao vivo** pode ser cancelado, **mesmo com lances**. Usa a mesma trava do
+        lance (`SELECT ... FOR UPDATE` na linha do lote), então lance e cancelamento simultâneos são
+        processados um de cada vez.
+
+        - O lote vira `CANCELLED` e some da vitrine. Lances posteriores recebem 404.
+        - **Estorno:** o valor comprometido do líder volta ao disponível automaticamente, porque o
+          comprometido só soma lotes `ACTIVE`. Nada havia sido debitado, então o saldo total não
+          muda. Uma `WalletTransaction` `REFUND` informativa, com o valor liberado, é registrada
+          para o líder.
+        - Depois do commit, cada licitante do lote recebe o e-mail "Lote cancelado" (se os e-mails
+          estiverem ativos; `@demo.com` nunca recebe).
+        - Lote encerrado (passou do fim, mesmo que ainda não liquidado) ou liquidado: 409.
       security: [{ bearerAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/LotId'
@@ -302,8 +315,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               examples:
-                comLances:
-                  value: { error: { code: LOT_HAS_BIDS, message: Não é possível cancelar um lote que já recebeu lances } }
                 encerrado:
                   value: { error: { code: LOT_ENDED, message: Lote encerrado não pode ser cancelado } }
                 jaCancelado:

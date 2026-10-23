@@ -33,13 +33,23 @@ export function DashboardPage() {
   useEffect(load, [load]);
 
   async function handleCancel(lot) {
+    const hasBids = lot.bidCount > 0;
     const ok = await confirm({
-      title: 'Cancelar lote?',
+      title: hasBids ? 'Cancelar lote com lances?' : 'Cancelar lote?',
       message: (
-        <p>
-          O lote <strong>{lot.title}</strong> sairá da vitrine e não poderá mais receber lances. Esta ação não pode ser
-          desfeita.
-        </p>
+        <>
+          <p>
+            O lote <strong>{lot.title}</strong> sairá da vitrine e não poderá mais receber lances. Esta ação não pode
+            ser desfeita.
+          </p>
+          {hasBids && (
+            <p>
+              Os {lot.bidCount === 1 ? 'lance será estornado' : `${lot.bidCount} lances serão estornados`}: o valor
+              comprometido do licitante que lidera ({formatBRL(lot.currentBidCents)}) volta ao saldo disponível dele,
+              ninguém é cobrado e os participantes são avisados por e-mail.
+            </p>
+          )}
+        </>
       ),
       confirmLabel: 'Cancelar lote',
       cancelLabel: 'Manter lote',
@@ -50,7 +60,7 @@ export function DashboardPage() {
     setCancellingId(lot.id);
     try {
       await lotsApi.cancel(lot.id);
-      toast.success('Lote cancelado.');
+      toast.success(lot.bidCount > 0 ? 'Lote cancelado. Os lances foram estornados.' : 'Lote cancelado.');
       load();
     } catch (err) {
       toast.error(err.message);
@@ -102,8 +112,9 @@ export function DashboardPage() {
         <ul className="dash-list">
           {data.lots.map(({ lot, result, winnerAlias, receiptCode }) => {
             const info = RESULT[result] ?? { label: result, tone: 'neutral' };
-            // Base: só dá para cancelar lote ativo, sem lances e que ainda não terminou.
-            const canCancel = (result === 'live' || result === 'scheduled') && lot.bidCount === 0;
+            // Lote agendado ou ao vivo pode ser cancelado, mesmo com lances (estorno automático).
+            // Encerrado/liquidado não. Quem decide de verdade é o back-end.
+            const canCancel = result === 'live' || result === 'scheduled';
             return (
               <li key={lot.id} className="dash-item card">
                 <LotImage src={lot.imageUrl} alt="" className="dash-item__thumb" />
