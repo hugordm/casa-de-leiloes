@@ -87,6 +87,11 @@ model Lot {
   lastHash String?
   seal     String?
 
+  // Aviso por e-mail ao leiloeiro sobre lances: quando foi o último e até qual lance ele cobriu.
+  // Fica no banco (e não em memória) para o limite de 1 e-mail a cada 15 min sobreviver a reinícios.
+  auctioneerNotifiedAt       DateTime?
+  auctioneerNotifiedBidCount Int       @default(0)
+
   createdAt DateTime @default(now())
 
   auctioneer   User                @relation("LotAuctioneer", fields: [auctioneerId], references: [id])

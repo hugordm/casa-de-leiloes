@@ -7,7 +7,7 @@ jest.mock('../src/lib/resendClient', () => ({
 const { prisma, resetDb, createUser, createLot, bid, MINUTE } = require('./helpers');
 const env = require('../src/config/env');
 const settlementService = require('../src/services/settlement.service');
-const { waitForPendingEmails } = require('../src/services/email/notification.service');
+const { waitForPendingEmails, sendDueBidDigests } = require('../src/services/email/notification.service');
 
 let auctioneer;
 let ana;
@@ -53,7 +53,8 @@ describe('"Você foi superado"', () => {
     await bid(lot.id, bruno, 105000);
     await waitForPendingEmails();
 
-    expect(mockSend).toHaveBeenCalledTimes(1); // 1º lance não tinha líder anterior
+    expect(sentTo(ana.email)).toHaveLength(1);
+    expect(sentTo(bruno.email)).toHaveLength(0); // 1º lance (da Ana) não tinha líder anterior
     const [email] = sentTo(ana.email);
     expect(email.subject).toBe('Você foi superado em "Nighthawks"');
     expect(email.from).toBe(env.EMAIL_FROM);
@@ -110,6 +111,186 @@ describe('"Você foi superado"', () => {
     expect(res.status).toBe(201);
     expect((await prisma.lot.findUnique({ where: { id: lot.id } })).leaderId).toBe(bruno.id);
     expect(errorLog).toHaveBeenCalledWith(expect.stringContaining('[email] falha'), 'rede caiu');
+  });
+});
+
+describe('leiloeiro: lances no lote dele', () => {
+  // Nos testes o "agora" do resumo é simulado: minutesLater(16) = 16 min no futuro.
+  const minutesLater = (min) => new Date(Date.now() + min * MINUTE);
+  const auctioneerEmails = () => sentTo(auctioneer.email);
+  const bidderAliasOf = async (lotId, user) =>
+    (await prisma.bid.findFirst({ where: { lotId, bidderId: user.id } })).bidderAlias;
+
+  test('1º lance: "Seu lote começou a receber lances" na hora, só com o apelido do licitante', async () => {
+    const lot = await createLot(auctioneer, { title: 'Nighthawks' });
+    await bid(lot.id, ana, 100000);
+    await waitForPendingEmails();
+
+    const [email] = auctioneerEmails();
+    expect(email.subject).toBe('Seu lote "Nighthawks" começou a receber lances');
+    expect(email.text).toContain('Primeiro lance: R$ 1.000,00');
+    expect(email.text).toContain(`Licitante: ${await bidderAliasOf(lot.id, ana)}`);
+    expect(email.text).toMatch(/Tempo restante: (59 min|1 h 00 min)/);
+    expect(email.html).toContain(`https://leiloes.exemplo.com/lotes/${lot.id}`);
+    for (const content of [email.html, email.text, email.subject]) {
+      expect(content).not.toContain('Ana');
+      expect(content).not.toContain(ana.email);
+    }
+  });
+
+  test('lances seguintes não geram e-mail imediato ao leiloeiro', async () => {
+    const lot = await createLot(auctioneer);
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000);
+    await bid(lot.id, ana, 110000);
+    await waitForPendingEmails();
+
+    expect(auctioneerEmails()).toHaveLength(1); // só o do 1º lance
+  });
+
+  test('resumo: no máximo 1 a cada 15 min, com lances novos, lance atual, líder e tempo restante', async () => {
+    const lot = await createLot(auctioneer, { title: 'Nighthawks' });
+    await bid(lot.id, ana, 100000); // aviso do 1º lance (agora)
+    await bid(lot.id, bruno, 105000);
+    await bid(lot.id, ana, 110000);
+    await waitForPendingEmails();
+    mockSend.mockClear();
+
+    // 14 min depois do 1º aviso: ainda dentro da janela → nada
+    await sendDueBidDigests({ now: minutesLater(14) });
+    expect(mockSend).not.toHaveBeenCalled();
+
+    // 16 min depois: resumo dos 2 lances seguintes
+    await sendDueBidDigests({ now: minutesLater(16) });
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const [digest] = auctioneerEmails();
+    expect(digest.subject).toBe('"Nighthawks": 2 lances novos');
+    expect(digest.text).toContain('Lances novos: 2');
+    expect(digest.text).toContain('Lance atual: R$ 1.100,00');
+    expect(digest.text).toContain(`Liderando: ${await bidderAliasOf(lot.id, ana)}`);
+    expect(digest.text).toContain('Total de lances: 3');
+    expect(digest.text).toMatch(/Tempo restante: 4\d min/); // fim em ~60 min, "agora" = +16 min
+    for (const content of [digest.html, digest.text, digest.subject]) {
+      for (const user of [ana, bruno]) {
+        expect(content).not.toContain(user.name);
+        expect(content).not.toContain(user.email);
+      }
+    }
+
+    // Sem lances novos, nenhum resumo (nem depois de mais 15 min)
+    await sendDueBidDigests({ now: minutesLater(40) });
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  test('a janela de 15 min conta a partir do último aviso', async () => {
+    const lot = await createLot(auctioneer);
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000);
+    await waitForPendingEmails();
+    await sendDueBidDigests({ now: minutesLater(16) }); // resumo nº 1 (aviso em +16)
+    mockSend.mockClear();
+
+    await bid(lot.id, ana, 110000);
+    await waitForPendingEmails(); // ("superado" do Bruno; aqui só interessam os do leiloeiro)
+    await sendDueBidDigests({ now: minutesLater(30) }); // só 14 min desde o último aviso
+    expect(auctioneerEmails()).toHaveLength(0);
+
+    await sendDueBidDigests({ now: minutesLater(31) }); // 15 min → resumo nº 2
+    expect(auctioneerEmails()).toHaveLength(1);
+    expect(auctioneerEmails()[0].subject).toContain('1 lance novo');
+  });
+
+  test('lances dentro da janela entram no resumo mesmo sem lance depois dela', async () => {
+    const lot = await createLot(auctioneer);
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000); // dentro da janela; ninguém mais dá lance
+    await waitForPendingEmails();
+    mockSend.mockClear();
+
+    await sendDueBidDigests({ now: minutesLater(15) });
+    expect(auctioneerEmails()).toHaveLength(1);
+  });
+
+  test('lote já encerrado não recebe resumo (o "Seu lote foi encerrado" cobre)', async () => {
+    const lot = await createLot(auctioneer, { endsAt: new Date(Date.now() + 10 * MINUTE) });
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000);
+    await waitForPendingEmails();
+    mockSend.mockClear();
+
+    await sendDueBidDigests({ now: minutesLater(16) }); // o lote terminou em +10 min
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  test('duas rodadas simultâneas enviam um único resumo', async () => {
+    const lot = await createLot(auctioneer);
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000);
+    await waitForPendingEmails();
+    mockSend.mockClear();
+
+    const now = minutesLater(16);
+    await Promise.all([sendDueBidDigests({ now }), sendDueBidDigests({ now }), sendDueBidDigests({ now })]);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  test('é enviado só depois do commit e falha do Resend não afeta o lance', async () => {
+    const lot = await createLot(auctioneer);
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+    let seenBidCount;
+    mockSend.mockImplementation(async () => {
+      seenBidCount = (await prisma.lot.findUnique({ where: { id: lot.id } })).bidCount;
+      throw new Error('rede caiu');
+    });
+
+    const res = await bid(lot.id, ana, 100000);
+    await waitForPendingEmails();
+
+    expect(res.status).toBe(201);
+    expect(seenBidCount).toBe(1); // o lance já estava confirmado quando o e-mail saiu
+    expect((await prisma.lot.findUnique({ where: { id: lot.id } })).leaderId).toBe(ana.id);
+    expect(errorLog).toHaveBeenCalledWith(expect.stringContaining('[email] falha'), 'rede caiu');
+  });
+
+  test('não bloqueia a resposta do 1º lance (Resend lento)', async () => {
+    const lot = await createLot(auctioneer);
+    mockSend.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ data: {}, error: null }), 1500)));
+
+    const started = Date.now();
+    const res = await bid(lot.id, ana, 100000);
+
+    expect(res.status).toBe(201);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  test('falha no resumo de um lote não impede o de outro', async () => {
+    const lotA = await createLot(auctioneer, { title: 'Lote A' });
+    const lotB = await createLot(auctioneer, { title: 'Lote B' });
+    for (const lot of [lotA, lotB]) {
+      await bid(lot.id, ana, 100000);
+      await bid(lot.id, bruno, 105000);
+    }
+    await waitForPendingEmails();
+    mockSend.mockClear();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockSend
+      .mockRejectedValueOnce(new Error('rede caiu'))
+      .mockResolvedValue({ data: { id: 'ok' }, error: null });
+
+    await sendDueBidDigests({ now: minutesLater(16) });
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  test('leiloeiro @demo.com não recebe resumo', async () => {
+    await prisma.user.update({ where: { id: auctioneer.id }, data: { email: 'leiloeiro@demo.com' } });
+    const lot = await createLot(auctioneer);
+    await bid(lot.id, ana, 100000);
+    await bid(lot.id, bruno, 105000);
+    await waitForPendingEmails();
+    mockSend.mockClear();
+
+    await sendDueBidDigests({ now: minutesLater(16) });
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });
 
@@ -186,9 +367,10 @@ describe('liquidação', () => {
 });
 
 describe('quando NÃO enviar', () => {
-  test('endereços @demo.com são ignorados', async () => {
+  test('endereços @demo.com são ignorados (licitante e leiloeiro)', async () => {
     const demo = await createUser({ balanceCents: 500000 });
     await prisma.user.update({ where: { id: demo.id }, data: { email: 'ana@demo.com' } });
+    await prisma.user.update({ where: { id: auctioneer.id }, data: { email: 'leiloeiro@demo.com' } });
     const lot = await createLot(auctioneer);
     await bid(lot.id, demo, 100000);
     await bid(lot.id, bruno, 105000);

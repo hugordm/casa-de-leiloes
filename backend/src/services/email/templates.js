@@ -174,4 +174,88 @@ function lotEndedEmail({ name, lot, sold, amountCents, winnerAlias, receiptUrl, 
   return { subject: `Seu lote "${lot.title}" foi encerrado`, html, text };
 }
 
-module.exports = { outbidEmail, wonEmail, lotEndedEmail, escapeHtml };
+// "2 h 05 min", "3 dias e 4 h", "menos de 1 min" — tempo até o fim, no momento do envio.
+function formatRemaining(ms) {
+  const totalMin = Math.floor(ms / 60000);
+  if (totalMin < 1) return 'menos de 1 min';
+  const days = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const minutes = totalMin % 60;
+  if (days > 0) return `${days} ${days === 1 ? 'dia' : 'dias'}${hours ? ` e ${hours} h` : ''}`;
+  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, '0')} min`;
+  return `${minutes} min`;
+}
+
+// ---------- "Seu lote começou a receber lances" (para o leiloeiro, no 1º lance) ----------
+// Quem deu o lance aparece só pelo apelido (privacidade).
+function firstBidEmail({ name, lot, bidderAlias, now, roomUrl }) {
+  const remaining = formatRemaining(new Date(lot.endsAt) - now);
+  const html = layout({
+    preheader: `Primeiro lance: ${formatBRL(lot.currentBidCents)}.`,
+    title: 'Seu lote começou a receber lances',
+    bodyHtml: [
+      paragraph(`${escapeHtml(firstName(name))}, <strong>${escapeHtml(lot.title)}</strong> recebeu o primeiro lance.`),
+      infoTable([
+        infoRow('Primeiro lance', formatBRL(lot.currentBidCents)),
+        infoRow('Licitante', bidderAlias),
+        infoRow('Tempo restante', remaining),
+        infoRow('Termina em', formatDate(lot.endsAt)),
+      ]),
+      paragraph('Para não lotar sua caixa de entrada, os próximos lances chegam em um resumo, no máximo a cada 15 minutos.'),
+      button(roomUrl, 'Acompanhar na sala do lote'),
+    ].join('\n'),
+  });
+  const text = [
+    `${firstName(name)}, "${lot.title}" recebeu o primeiro lance.`,
+    '',
+    `Primeiro lance: ${formatBRL(lot.currentBidCents)}`,
+    `Licitante: ${bidderAlias}`,
+    `Tempo restante: ${remaining}`,
+    `Termina em: ${formatDate(lot.endsAt)}`,
+    '',
+    'Os próximos lances chegam em um resumo, no máximo a cada 15 minutos.',
+    `Sala do lote: ${roomUrl}`,
+    '',
+    '— Casa de Leilões',
+  ].join('\n');
+  return { subject: `Seu lote "${lot.title}" começou a receber lances`, html, text };
+}
+
+// ---------- Resumo de lances (para o leiloeiro, no máximo 1 a cada 15 min por lote) ----------
+function bidDigestEmail({ name, lot, newBids, leaderAlias, now, roomUrl }) {
+  const remaining = formatRemaining(new Date(lot.endsAt) - now);
+  const label = newBids === 1 ? '1 lance novo' : `${newBids} lances novos`;
+  const html = layout({
+    preheader: `${label}. Lance atual: ${formatBRL(lot.currentBidCents)}.`,
+    title: 'Resumo de lances',
+    bodyHtml: [
+      paragraph(`${escapeHtml(firstName(name))}, <strong>${escapeHtml(lot.title)}</strong> recebeu ${label} desde o último aviso.`),
+      infoTable([
+        infoRow('Lances novos', String(newBids)),
+        infoRow('Lance atual', formatBRL(lot.currentBidCents)),
+        infoRow('Liderando', leaderAlias),
+        infoRow('Total de lances', String(lot.bidCount)),
+        infoRow('Tempo restante', remaining),
+        infoRow('Termina em', formatDate(lot.endsAt)),
+      ]),
+      button(roomUrl, 'Acompanhar na sala do lote'),
+    ].join('\n'),
+  });
+  const text = [
+    `${firstName(name)}, "${lot.title}" recebeu ${label} desde o último aviso.`,
+    '',
+    `Lances novos: ${newBids}`,
+    `Lance atual: ${formatBRL(lot.currentBidCents)}`,
+    `Liderando: ${leaderAlias}`,
+    `Total de lances: ${lot.bidCount}`,
+    `Tempo restante: ${remaining}`,
+    `Termina em: ${formatDate(lot.endsAt)}`,
+    '',
+    `Sala do lote: ${roomUrl}`,
+    '',
+    '— Casa de Leilões',
+  ].join('\n');
+  return { subject: `"${lot.title}": ${label}`, html, text };
+}
+
+module.exports = { outbidEmail, wonEmail, lotEndedEmail, firstBidEmail, bidDigestEmail, formatRemaining, escapeHtml };

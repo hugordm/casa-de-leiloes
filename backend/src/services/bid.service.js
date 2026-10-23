@@ -130,6 +130,10 @@ async function placeBid(lotId, userId, amountCents) {
   if (previousLeaderId) {
     notifications.notifyOutbid({ lotId, previousLeaderId });
   }
+  // 1º lance do lote: avisa o leiloeiro na hora. Os seguintes vão no resumo (job, a cada 15 min).
+  if (response.bid.seq === 1) {
+    notifications.notifyFirstBid(lotId);
+  }
   return response;
 }
 

@@ -227,6 +227,22 @@ de um lote para outro. Sala, auditoria e comprovante nunca expõem nome, e-mail 
 | **Você foi superado** | Um lance cobre o do líder | Líder anterior | Lance atual, mínimo para cobrir, fim do leilão e link da sala. **Não revela quem cobriu** (nem nome, nem apelido) |
 | **Você venceu** | Liquidação com vencedor | Vencedor | Valor, nº e link do comprovante |
 | **Seu lote foi encerrado** | Toda liquidação | Leiloeiro | Vendido (valor, apelido do arrematante, link do comprovante) ou "encerrado sem lances" |
+| **Seu lote começou a receber lances** | 1º lance do lote | Leiloeiro | Valor, apelido do licitante, tempo restante e link da sala |
+| **Resumo de lances** | No máximo 1 a cada 15 min por lote | Leiloeiro | Lances novos desde o último aviso, lance atual, apelido de quem lidera, total, tempo restante e link da sala |
+
+**Avisos de lance para o leiloeiro:**
+- O e-mail do 1º lance sai na hora (depois do commit, em segundo plano).
+- Os lances seguintes vão num resumo, enviado pelo mesmo job da liquidação (a cada 15 s). Ele
+  procura lotes ao vivo com lances ainda não avisados e cujo último aviso foi há 15 min ou mais.
+  Por ser o job, e não o lance, quem decide o envio, os lances feitos dentro da janela entram no
+  resumo mesmo que ninguém mais dê lance depois.
+- O controle fica no banco (`Lot.auctioneerNotifiedAt` e `auctioneerNotifiedBidCount`), e não em
+  memória: o limite de 15 min continua valendo depois de um reinício (o Render "dorme").
+- Para não haver e-mail duplicado, o envio só acontece depois de um `UPDATE` condicional
+  ("reserva"): se duas rodadas tentarem ao mesmo tempo, só uma consegue.
+- Lote encerrado não recebe resumo, porque o "Seu lote foi encerrado" já traz o resultado.
+- O resumo roda separado da liquidação: um Resend lento não atrasa a liquidação.
+- Quem deu lance aparece só pelo apelido (`Licitante #XXXXXX`), nunca nome ou e-mail.
 
 - **Depois do commit, sem bloquear:**
   - O `placeBid` e o `settleLot` disparam a notificação **depois** do `await prisma.$transaction(...)`.

@@ -213,6 +213,20 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
 
+### Ajuste — e-mails de lances para o leiloeiro
+
+**Gerado com IA:**
+- Migration `auctioneer_bid_notifications`: `Lot.auctioneerNotifiedAt` e `auctioneerNotifiedBidCount`.
+- `notification.service.js`: `notifyFirstBid` (1º lance, disparado pelo `placeBid` após o commit) e
+  `sendDueBidDigests` (resumo de no máximo 1 a cada 15 min por lote, com "reserva" por `UPDATE`
+  condicional contra envio duplicado). Chamado pelo job, em paralelo à liquidação.
+- Templates "Seu lote começou a receber lances" e "Resumo de lances" (HTML + texto puro).
+- 11 testes novos em `email.test.js` (Resend simulado e "agora" simulado para a janela de 15 min).
+  Validados por mutação: com intervalo de 10 min ou sem a condição da reserva, os testes falham.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
 ## Uso de IA no produto (não só no desenvolvimento)
 
 Além de ajudar a escrever o código, a IA também faz parte do produto: o **assistente** do site

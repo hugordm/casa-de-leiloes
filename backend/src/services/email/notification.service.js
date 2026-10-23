@@ -119,4 +119,100 @@ function notifySettlement(lotId) {
   });
 }
 
-module.exports = { notifyOutbid, notifySettlement, waitForPendingEmails, sendEmail };
+// ---------- Lances no lote (para o leiloeiro) ----------
+//
+// - 1º lance: e-mail na hora (notifyFirstBid, chamado pelo placeBid depois do commit).
+// - Lances seguintes: no máximo 1 resumo por lote a cada 15 min (sendDueBidDigests, chamado
+//   pelo job a cada 15 s). O job, e não o lance, decide o envio: assim os lances feitos dentro
+//   da janela entram no resumo mesmo que ninguém mais dê lance depois.
+// - O controle fica no próprio lote: auctioneerNotifiedAt (quando foi o último aviso) e
+//   auctioneerNotifiedBidCount (até qual lance o leiloeiro já foi avisado).
+// - Quem deu lance aparece só pelo apelido (Licitante #XXXXXX), nunca nome ou e-mail.
+
+const BID_DIGEST_INTERVAL_MS = 15 * 60 * 1000;
+
+// "Reserva" o aviso: só grava se o lote ainda estiver no estado que lemos (mesmo
+// auctioneerNotifiedBidCount). Se duas rodadas do job (ou duas instâncias) tentarem ao mesmo
+// tempo, só uma consegue (count = 1) e só ela envia: nada de e-mail duplicado.
+async function claimBidNotification(lot, now) {
+  const { count } = await prisma.lot.updateMany({
+    where: { id: lot.id, auctioneerNotifiedBidCount: lot.auctioneerNotifiedBidCount },
+    data: { auctioneerNotifiedAt: now, auctioneerNotifiedBidCount: lot.bidCount },
+  });
+  return count === 1;
+}
+
+function notifyFirstBid(lotId) {
+  dispatch('primeiro lance', async () => {
+    const now = new Date();
+    const lot = await prisma.lot.findUnique({ where: { id: lotId }, include: { auctioneer: true } });
+    // Já avisado (ex.: o job chegou antes) ou lote sem lances/inativo: nada a fazer.
+    if (!lot || lot.status !== 'ACTIVE' || lot.auctioneerNotifiedBidCount > 0 || lot.bidCount === 0) return;
+
+    // O e-mail fala do 1º lance; se outros chegaram nesse meio-tempo, ficam para o resumo.
+    const first = await prisma.bid.findUnique({ where: { lotId_seq: { lotId, seq: 1 } } });
+    const claimed = await claimBidNotification({ ...lot, bidCount: 1 }, now);
+    if (!claimed) return;
+
+    const email = templates.firstBidEmail({
+      name: lot.auctioneer.name,
+      lot: { ...lot, currentBidCents: first.amountCents },
+      bidderAlias: first.bidderAlias,
+      now,
+      roomUrl: `${env.APP_URL}/lotes/${lot.id}`,
+    });
+    await sendEmail({ to: lot.auctioneer.email, ...email });
+  });
+}
+
+// Envia os resumos vencidos: lotes ao vivo com lances ainda não avisados e cujo último aviso
+// foi há 15 min ou mais. Lotes já encerrados ficam de fora (o "Seu lote foi encerrado" cobre).
+// Recebe `now` para os testes simularem a passagem do tempo.
+async function sendDueBidDigests({ now = new Date() } = {}) {
+  const lots = await prisma.lot.findMany({
+    where: {
+      status: 'ACTIVE',
+      endsAt: { gt: now },
+      bidCount: { gt: 0 },
+      OR: [
+        { auctioneerNotifiedAt: null },
+        { auctioneerNotifiedAt: { lte: new Date(now.getTime() - BID_DIGEST_INTERVAL_MS) } },
+      ],
+    },
+    include: { auctioneer: true },
+    take: 50,
+  });
+
+  let sent = 0;
+  for (const lot of lots) {
+    const newBids = lot.bidCount - lot.auctioneerNotifiedBidCount;
+    if (newBids <= 0) continue; // nenhum lance novo desde o último aviso
+    try {
+      if (!(await claimBidNotification(lot, now))) continue;
+      const email = templates.bidDigestEmail({
+        name: lot.auctioneer.name,
+        lot,
+        newBids,
+        leaderAlias: bidderAlias(lot.id, lot.leaderId),
+        now,
+        roomUrl: `${env.APP_URL}/lotes/${lot.id}`,
+      });
+      const result = await sendEmail({ to: lot.auctioneer.email, ...email });
+      if (result.sent) sent += 1;
+    } catch (err) {
+      // Um lote com erro não impede os outros; só log.
+      console.error(`[email] falha ao enviar (resumo de lances, lote ${lot.id}):`, err.message);
+    }
+  }
+  return { sent };
+}
+
+module.exports = {
+  notifyOutbid,
+  notifySettlement,
+  notifyFirstBid,
+  sendDueBidDigests,
+  waitForPendingEmails,
+  sendEmail,
+  BID_DIGEST_INTERVAL_MS,
+};
