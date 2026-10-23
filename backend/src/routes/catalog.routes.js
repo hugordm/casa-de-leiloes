@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const catalogService = require('../services/catalog.service');
-const auth = require('../middlewares/auth');
+const { auth } = require('../middlewares/auth');
 const requireRole = require('../middlewares/requireRole');
 
 const router = Router();

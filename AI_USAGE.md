@@ -54,3 +54,28 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 4 — Lances + carteira + anti-sniping (com testes)
+
+**Gerado com IA:**
+- `src/services/bid.service.js`: `placeBid` em `prisma.$transaction` com `SELECT ... FOR UPDATE`
+  no lote e no usuário (ordem fixa lote → usuário), validações na ordem do enunciado, criação do
+  lance com `seq`/apelido/`prevHash`/`hash`, atualização do lote (lance atual, líder, contagem,
+  `lastHash`, selo) e anti-sniping (+2 min se faltar menos de 2 min). `listMyBids` para `GET /me/bids`.
+- `src/services/wallet.service.js`: comprometido calculado (soma dos lances liderados em lotes ACTIVE),
+  disponível, extrato e depósito simulado com limites (transação + trava do usuário).
+- `src/services/hashChain.service.js` (parte de geração): HMAC-SHA256 com `AUDIT_SECRET`,
+  hash encadeado, selo do lote e apelido `Licitante #XXXXXX`. A verificação fica para a Fase 5.
+- `src/middlewares/auth.js` refatorado: `auth` (obrigatório) e `optionalAuth` (sala do lote).
+- `GET /lots/:id` com últimos lances (só apelidos), apelido do líder e bloco `me`
+  (ganhando/superado, maior lance, posição) para licitante logado.
+- Rotas `POST /lots/:id/bids`, `GET /wallet`, `POST /wallet/deposit`, `GET /me/bids`.
+  Remoção das rotas temporárias `/dev/*`.
+- `src/utils/money.js` (formatação R$ só para mensagens de erro).
+- Testes Jest + Supertest em banco separado (`leiloes_test`, recriado a cada execução, com trava
+  que impede rodar em banco que não termine em `_test`): 27 testes cobrindo lance aceito e corrente,
+  todas as recusas, anti-sniping, liberação do comprometido, depósito, sala/privacidade e
+  **concorrência** (validado removendo o `FOR UPDATE`: os testes de concorrência passam a falhar).
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_

@@ -80,4 +80,4 @@ async function login({ email, password } = {}) {
   return { token: signToken(user), user: toPublicUser(user) };
 }
 
-module.exports = { register, login };
+module.exports = { register, login, signToken };

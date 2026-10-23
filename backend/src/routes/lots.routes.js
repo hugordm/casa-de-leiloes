@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const lotService = require('../services/lot.service');
-const auth = require('../middlewares/auth');
+const bidService = require('../services/bid.service');
+const { auth, optionalAuth } = require('../middlewares/auth');
 const requireRole = require('../middlewares/requireRole');
 const AppError = require('../errors/AppError');
 const { parseId } = require('../utils/validation');
@@ -20,9 +21,9 @@ router.get('/', async (req, res) => {
   res.json({ lots });
 });
 
-// GET /lots/:id  (público)
-router.get('/:id', async (req, res) => {
-  const lot = await lotService.getLot(lotIdFrom(req));
+// GET /lots/:id  (público; se for um licitante logado, inclui "me" com a situação dele)
+router.get('/:id', optionalAuth, async (req, res) => {
+  const lot = await lotService.getLot(lotIdFrom(req), req.user);
   res.json({ lot });
 });
 
@@ -36,6 +37,12 @@ router.post('/', auth, requireRole('AUCTIONEER'), async (req, res) => {
 router.post('/:id/cancel', auth, requireRole('AUCTIONEER'), async (req, res) => {
   const lot = await lotService.cancelLot(lotIdFrom(req), req.user.id);
   res.json({ lot });
+});
+
+// POST /lots/:id/bids  (BIDDER)  { amountCents }  → 201 { bid, extended, lot }
+router.post('/:id/bids', auth, requireRole('BIDDER'), async (req, res) => {
+  const result = await bidService.placeBid(lotIdFrom(req), req.user.id, req.body?.amountCents);
+  res.status(201).json(result);
 });
 
 module.exports = router;

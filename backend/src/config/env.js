@@ -16,6 +16,8 @@ module.exports = {
   DATABASE_URL: required('DATABASE_URL'),
   JWT_SECRET: required('JWT_SECRET'),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
+  // Segredo da corrente de hashes da auditoria e dos apelidos. Fica só no ambiente, nunca no banco.
+  AUDIT_SECRET: required('AUDIT_SECRET'),
   // Endereços do front autorizados no CORS (separados por vírgula)
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   // API do Art Institute of Chicago (catálogo de obras)

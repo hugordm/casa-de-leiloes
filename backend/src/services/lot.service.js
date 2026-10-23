@@ -219,11 +219,54 @@ async function listLots(query = {}) {
 
 // ---------- Detalhe (sala) ----------
 
-async function getLot(lotId) {
-  const lot = await prisma.lot.findUnique({ where: { id: lotId }, include: includeAuctioneer });
+const RECENT_BIDS = 10;
+
+// Situação do licitante logado na sala: está ganhando? qual o maior lance dele? em que posição?
+// Posição = ranking dos licitantes pelo maior lance de cada um (1 = líder).
+async function getViewerSituation(lot, userId) {
+  const ranking = await prisma.bid.groupBy({
+    by: ['bidderId'],
+    where: { lotId: lot.id },
+    _max: { amountCents: true },
+    orderBy: { _max: { amountCents: 'desc' } },
+  });
+  const index = ranking.findIndex((r) => r.bidderId === userId);
+  if (index === -1) return { status: 'none' }; // ainda não deu lance neste lote
+
+  return {
+    status: lot.leaderId === userId ? 'leading' : 'outbid',
+    myBestBidCents: ranking[index]._max.amountCents,
+    position: index + 1,
+    totalBidders: ranking.length,
+  };
+}
+
+// viewer = req.user (opcional). Visitante vê tudo, menos o bloco "me".
+async function getLot(lotId, viewer) {
+  const lot = await prisma.lot.findUnique({
+    where: { id: lotId },
+    include: {
+      ...includeAuctioneer,
+      // Últimos lances, só com apelido (nunca nome/e-mail/id do licitante)
+      bids: {
+        orderBy: { seq: 'desc' },
+        take: RECENT_BIDS,
+        select: { seq: true, bidderAlias: true, amountCents: true, createdAt: true },
+      },
+    },
+  });
   if (!lot) throw notFound();
+
   // Cancelado é retornado (displayStatus 'cancelled') para quem tinha o link entender o que houve.
-  return serializeLot(lot);
+  const result = {
+    ...serializeLot(lot),
+    leaderAlias: lot.bids[0]?.bidderAlias ?? null, // o último lance é sempre do líder
+    recentBids: lot.bids,
+  };
+  if (viewer?.role === 'BIDDER') {
+    result.me = await getViewerSituation(lot, viewer.id);
+  }
+  return result;
 }
 
 module.exports = { createLot, cancelLot, listLots, getLot, serializeLot };
