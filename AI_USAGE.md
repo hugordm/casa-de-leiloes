@@ -139,7 +139,7 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 **Revisado/ajustado por mim:**
 - Defini os padrões de interface: nenhum `alert`/`confirm` do navegador (modal próprio e toasts), botões desabilitados durante a requisição, dark mode seguindo a preferência do sistema.
 - Resolvi um problema de ambiente: o disco do sistema estava 100% cheio; movi os dados do Docker para a partição `/home`, validei a auditoria e só então apaguei a cópia antiga.
-- Teste no navegador: _(a preencher)_
+- Teste no navegador: no site no ar, testei lances entre duas contas em janelas diferentes ("você foi superado" aparece sozinho), depósito na carteira, criação de lote pelo leiloeiro, dark mode e o layout no celular.
 
 ## Fase 7 — Deploy (Neon + Render + Vercel)
 
@@ -179,7 +179,7 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 - Link "Documentação da API" no rodapé do front e no README.
 
 **Revisado/ajustado por mim:**
-- _(a preencher)_
+- Abri o /docs em produção, fiz login, usei o "Authorize" com o token e testei um lance abaixo do mínimo (recusado com a mensagem certa).
 
 ### Extra 2 — E-mails transacionais (Resend)
 
@@ -215,7 +215,7 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 
 **Revisado/ajustado por mim:**
 - Deixei o modelo configurável por variável (`ANTHROPIC_CHAT_MODEL`).
-- Testes do assistente: _(a preencher)_
+- Testes do assistente: perguntei por que o saldo disponível diminui após um lance (explicou o saldo comprometido, sem markdown) e perguntei a capital da França (recusou e voltou ao assunto do site).
 
 ### Ajuste — regra de senha (8 a 72 caracteres) e botão mostrar/ocultar
 
@@ -283,7 +283,7 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 
 **Revisado/ajustado por mim:**
 - Pedi depois de conferir o projeto contra os opcionais do PDF (o compose subia só o banco).
-- Teste local: _(a preencher)_
+- Teste local: rodei docker-compose up --build, abri o front em localhost:5173 e entrei com uma conta do seed.
 
 ## Funcionalidade iniciada e descartada
 
