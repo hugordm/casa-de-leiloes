@@ -5,6 +5,8 @@ const cors = require('cors');
 const env = require('./config/env');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
+const catalogRoutes = require('./routes/catalog.routes');
+const lotsRoutes = require('./routes/lots.routes');
 const devRoutes = require('./routes/dev.routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 
@@ -15,6 +17,8 @@ app.use(express.json());
 
 app.use('/health', healthRoutes);
 app.use('/auth', authRoutes);
+app.use('/catalog', catalogRoutes);
+app.use('/lots', lotsRoutes);
 
 // Rotas de teste de papéis: nunca expostas em produção.
 if (env.NODE_ENV !== 'production') {

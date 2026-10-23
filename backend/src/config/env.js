@@ -18,4 +18,8 @@ module.exports = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
   // Endereços do front autorizados no CORS (separados por vírgula)
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // API do Art Institute of Chicago (catálogo de obras)
+  AIC_API_URL: process.env.AIC_API_URL || 'https://api.artic.edu/api/v1',
+  // A AIC bloqueia (Cloudflare) requisições sem este cabeçalho de identificação
+  AIC_USER_AGENT: process.env.AIC_USER_AGENT || 'casa-de-leiloes-verzel',
 };

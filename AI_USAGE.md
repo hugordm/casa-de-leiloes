@@ -34,3 +34,23 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 3 — Catálogo + lotes + listagem
+
+**Gerado com IA:**
+- `src/services/catalog.service.js`: busca na API do Art Institute com `fetch` + timeout de 5s
+  (`AbortSignal.timeout`), cabeçalho `AIC-User-Agent`, tratamento de timeout/rede/resposta não-JSON
+  (502 com mensagem amigável) e obra inexistente (404). Converte para o formato do sistema.
+- `src/services/lot.service.js`:
+  - criação com validações (centavos inteiros, datas, duração 5 min–30 dias) e **snapshot**: o servidor
+    busca a obra pelo `externalId` e copia título/artista/imagem/atributos (não confia no cliente);
+  - cancelamento em transação com `SELECT ... FOR UPDATE` (dono, já cancelado, encerrado, com lances);
+  - listagem com filtros `status`, `search`, `minPrice`/`maxPrice` (centavos, sobre o preço atual);
+  - detalhe; serialização pública sem `leaderId`/`winnerId`.
+- `src/utils/lot.js` (status exibido e lance mínimo) e `src/utils/validation.js`.
+- `src/routes/catalog.routes.js` e `src/routes/lots.routes.js`; variáveis `AIC_API_URL` e `AIC_USER_AGENT`.
+- Roteiro de testes com curl, incluindo timeout real (servidor apontado para IP que não responde)
+  e vitrine funcionando com o catálogo fora do ar.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
