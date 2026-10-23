@@ -30,6 +30,7 @@
     "js-yaml": "^4.3.2",
     "jsonwebtoken": "^9.0.3",
     "prisma": "^5.22.0",
+    "resend": "^6.34.1",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
@@ -43,6 +44,9 @@
     "setupFiles": [
       "<rootDir>/tests/setupEnv.js"
     ],
-    "testTimeout": 20000
+    "testTimeout": 20000,
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/silenceInfo.js"
+    ]
   }
 }

@@ -44,6 +44,13 @@ module.exports = {
   AUDIT_SECRET: requiredSecret('AUDIT_SECRET'),
   // Endereços do front autorizados no CORS (variável CORS_ORIGIN, separados por vírgula)
   CORS_ORIGINS: corsOrigins(),
+  // E-mails transacionais (Resend). Desligados por padrão: sem EMAIL_ENABLED=true e
+  // RESEND_API_KEY, os envios são ignorados (com log) e o resto do sistema segue igual.
+  EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  EMAIL_FROM: process.env.EMAIL_FROM || 'Casa de Leilões <onboarding@resend.dev>',
+  // Endereço do front, usado nos links dos e-mails (padrão: a 1ª origem do CORS).
+  APP_URL: (process.env.APP_URL || corsOrigins()[0]).replace(/\/+$/, ''),
   // API do Art Institute of Chicago (catálogo de obras)
   AIC_API_URL: process.env.AIC_API_URL || 'https://api.artic.edu/api/v1',
   // A AIC bloqueia (Cloudflare) requisições sem este cabeçalho de identificação

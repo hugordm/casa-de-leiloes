@@ -19,6 +19,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../src/lib/prisma');
 const hashChain = require('../src/services/hashChain.service');
 const settlementService = require('../src/services/settlement.service');
+const { waitForPendingEmails } = require('../src/services/email/notification.service');
 
 const SEED_PASSWORD = 'senha123';
 const MINUTE = 60 * 1000;
@@ -206,6 +207,9 @@ Seed concluído. Senha de todos os usuários: ${SEED_PASSWORD}
 }
 
 main()
+  // A liquidação do lote #4 dispara e-mails em segundo plano (ignorados para @demo.com):
+  // espera terminarem antes de fechar a conexão com o banco.
+  .then(waitForPendingEmails)
   .catch((err) => {
     console.error(err);
     process.exit(1);

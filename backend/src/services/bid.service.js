@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const walletService = require('./wallet.service');
 const settlementService = require('./settlement.service');
+const notifications = require('./email/notification.service');
 const hashChain = require('./hashChain.service');
 const { serializeLot } = require('./lot.service');
 const { getMinNextBidCents } = require('../utils/lot');
@@ -19,7 +20,7 @@ async function placeBid(lotId, userId, amountCents) {
     throw new AppError(400, 'INVALID_AMOUNT', 'Informe um valor de lance válido');
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // TRAVAS (SELECT ... FOR UPDATE), sempre na ordem lote → usuário:
     // - lote: dois lances simultâneos no mesmo lote são processados um de cada vez,
     //   então o segundo já enxerga o lance atual/líder atualizados pelo primeiro;
@@ -119,8 +120,17 @@ async function placeBid(lotId, userId, amountCents) {
       },
       extended,
       lot: serializeLot(updatedLot, now),
+      previousLeaderId: lot.leaderId, // quem liderava antes deste lance (null no 1º lance)
     };
   });
+
+  // Daqui para baixo a transação JÁ FOI CONFIRMADA (commit). O e-mail é disparado em
+  // segundo plano: não atrasa a resposta e, se falhar, o lance continua valendo.
+  const { previousLeaderId, ...response } = result;
+  if (previousLeaderId) {
+    notifications.notifyOutbid({ lotId, previousLeaderId });
+  }
+  return response;
 }
 
 // GET /me/bids — lotes em que o licitante deu lance, com a situação dele em cada um.

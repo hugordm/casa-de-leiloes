@@ -10,6 +10,7 @@
 // de novo depois da trava.
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
+const notifications = require('./email/notification.service');
 
 const BATCH_SIZE = 50;
 
@@ -21,6 +22,14 @@ function generateReceiptCode() {
 
 // Liquida UM lote, se ele estiver mesmo vencido. Retorna { settled, outcome, receiptCode? }.
 async function settleLot(lotId) {
+  const result = await settleLotInTransaction(lotId);
+  // Só depois do commit, e só quando ESTA chamada liquidou (idempotência: uma segunda
+  // chamada devolve settled: false e não manda e-mail de novo). Não bloqueia quem chamou.
+  if (result.settled) notifications.notifySettlement(lotId);
+  return result;
+}
+
+async function settleLotInTransaction(lotId) {
   return prisma.$transaction(async (tx) => {
     // Mesma trava usada pelos lances: se um lance estiver sendo processado neste lote,
     // a liquidação espera ele terminar (e vice-versa).

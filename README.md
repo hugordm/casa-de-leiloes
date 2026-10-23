@@ -207,6 +207,29 @@ O licitante aparece como `Licitante #XXXXXX`, onde `XXXXXX` = HMAC(`AUDIT_SECRET
 O apelido é o mesmo dentro de um lote e diferente entre lotes, então não dá para rastrear a mesma pessoa
 de um lote para outro. Sala, auditoria e comprovante nunca expõem nome, e-mail ou id do licitante.
 
+## E-mails transacionais (Resend)
+
+| E-mail | Quando | Para quem | Conteúdo |
+|---|---|---|---|
+| **Você foi superado** | Um lance cobre o do líder | Líder anterior | Lance atual, mínimo para cobrir, fim do leilão e link da sala. **Não revela quem cobriu** (nem nome, nem apelido) |
+| **Você venceu** | Liquidação com vencedor | Vencedor | Valor, nº e link do comprovante |
+| **Seu lote foi encerrado** | Toda liquidação | Leiloeiro | Vendido (valor, apelido do arrematante, link do comprovante) ou "encerrado sem lances" |
+
+- **Depois do commit, sem bloquear:**
+  - O `placeBid` e o `settleLot` disparam a notificação **depois** do `await prisma.$transaction(...)`.
+  - O envio roda em segundo plano (`setImmediate`, fire-and-forget), então a resposta HTTP não espera o e-mail.
+  - Qualquer erro do Resend vira só log: o lance ou a liquidação já estão confirmados.
+  - A liquidação é idempotente, então a segunda chamada não reenvia.
+- **Desligado por padrão:** sem `EMAIL_ENABLED=true` e `RESEND_API_KEY`, cada envio é ignorado com
+  log (`[email] envio desativado...`). Contas `@demo.com` (seed) nunca recebem e-mail.
+- **Visual:** HTML em tabelas com estilos inline (o que funciona em Gmail e Outlook), largura máxima
+  de 560 px (fluida no celular), nas cores da Casa, com versão em texto puro. Títulos e nomes são
+  escapados (`&lt;`) e as datas saem no horário de Brasília.
+- **Testes:** `tests/email.test.js`, com o cliente do Resend simulado. Cobre destinatários e
+  conteúdo; garante que o e-mail sai só após o commit (o mock consulta o banco); que não bloqueia
+  (Resend lento); que falhas não desfazem nada; que `@demo.com` e o envio desativado são ignorados;
+  e que o HTML é escapado.
+
 ## Front-end
 
 | Rota | Página |
