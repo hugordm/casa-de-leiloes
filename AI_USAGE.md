@@ -147,3 +147,71 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 8 — Extras
+
+### Extra 1 — Documentação da API (Swagger)
+
+**Gerado com IA:**
+- `backend/docs/openapi.yaml` (OpenAPI 3.0) com todos os endpoints, autenticação Bearer, formato
+  padrão de erro e exemplos, incluindo cada recusa de lance com a mensagem real da API.
+- `routes/docs.routes.js`: Swagger UI em `GET /docs` e o documento em `GET /docs/openapi.json`.
+- `tests/docs.test.js`: valida o documento e compara as rotas reais do Express com as documentadas
+  (uma rota nova sem documentação faz o teste falhar).
+- Link "Documentação da API" no rodapé do front e no README.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
+### Extra 2 — E-mails transacionais (Resend)
+
+**Gerado com IA:**
+- `services/email/notification.service.js`: "Você foi superado", "Você venceu" e "Seu lote foi
+  encerrado", disparados depois do commit da transação, em segundo plano, com falhas só no log.
+  Envio ignorado (com log) sem chave, com `EMAIL_ENABLED=false` ou para `@demo.com`.
+- `services/email/templates.js`: HTML responsivo no visual da Casa, com versão em texto puro e
+  escape de títulos.
+- `lib/resendClient.js` (cliente isolado para o mock), `APP_URL` no `env.js`.
+- `tests/email.test.js` com o cliente do Resend simulado.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
+### Extra 3 — Assistente (chat flutuante)
+
+**Gerado com IA:**
+- Consulta à documentação oficial da Anthropic (platform.claude.com, antigo docs.claude.com) para
+  confirmar o identificador `claude-haiku-5-5` e o comportamento do modelo. O Haiku 5.5 raciocina
+  por padrão (*adaptive thinking*), esse raciocínio conta no `max_tokens` e a resposta pode vir
+  com um bloco `thinking` antes do texto. Também não aceita `temperature`. Daí `effort: low`,
+  `max_tokens: 800` e a leitura dos blocos pelo `type`.
+- `lib/anthropicClient.js`, `services/assistant/systemPrompt.js` (regras reais do sistema),
+  `services/assistant/assistant.service.js` (validação, histórico, 503, limpeza de markdown) e
+  `routes/assistant.routes.js` (limite de 10/min por IP); `trust proxy` em produção.
+- `ANTHROPIC_API_KEY` e `ANTHROPIC_CHAT_MODEL` no `env.js` e no `.env.example`; rota no Swagger.
+- `frontend/src/components/AssistantWidget.jsx` e os estilos em `components.css`.
+- `tests/assistant.test.js` (13 testes, SDK simulado).
+- Verificação visual com Playwright (tema claro, escuro, celular e o estado "indisponível"), com a
+  resposta da IA simulada no navegador para não gastar créditos.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_
+
+## Uso de IA no produto (não só no desenvolvimento)
+
+Além de ajudar a escrever o código, a IA também faz parte do produto: o **assistente** do site
+chama o modelo Claude Haiku (Anthropic) em tempo real para responder dúvidas dos usuários.
+
+- **O que ele faz:** explica regras e o uso do site (lances, carteira, anti-sniping, liquidação,
+  comprovante, auditoria, cadastro e papéis), em português e em texto puro.
+- **O que ele NÃO faz:** não dá lances, não deposita, não cancela e não lê dados de ninguém. A
+  chamada não tem ferramentas e o back-end não envia nenhum dado do banco para o modelo, só a
+  pergunta, as últimas mensagens e o system prompt fixo.
+- **Fonte de verdade:** as regras continuam no back-end (`bid.service`, `wallet.service`...). O
+  assistente só as explica, e o prompt diz para não inventar e admitir quando não souber.
+- **Custo e abuso:** Haiku (o modelo mais barato), `effort: low`, `max_tokens` baixo, histórico
+  curto, mensagem de até 500 caracteres e 10 mensagens/min por IP.
+- **Privacidade e segredos:** a chave fica só no back-end. As mensagens vão para a API da Anthropic,
+  então o widget é para dúvidas gerais, não para dados pessoais.
+- **Resiliência:** sem chave ou com a API fora, só o chat fica indisponível (503), e o resto do
+  site funciona normalmente.

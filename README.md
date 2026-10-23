@@ -2,7 +2,8 @@
 
 Plataforma de leilões de obras de arte (catálogo do Art Institute of Chicago), com lances em tempo real
 por polling, carteira simulada, liquidação automática, comprovante público e **auditoria à prova de
-adulteração** dos lances.
+adulteração** dos lances. Extras: documentação Swagger, e-mails transacionais (Resend) e um
+**assistente com IA** (Claude Haiku) que tira dúvidas sobre o site.
 
 > Teste técnico Elite Dev — Verzel.
 
@@ -67,6 +68,15 @@ Back-end (`backend/.env`):
 | `PORT` | não (`3333`) | Porta da API |
 | `CORS_ORIGIN` | **em produção, sim** (local: `http://localhost:5173`) | Origem(ns) do front, separadas por vírgula, sem `/` final |
 | `AIC_API_URL` / `AIC_USER_AGENT` | não | API do Art Institute (a AIC exige o cabeçalho `AIC-User-Agent`) |
+| `APP_URL` | não (1ª origem do `CORS_ORIGIN`) | URL pública do front, usada nos links dos e-mails |
+| `EMAIL_ENABLED` | não (`false`) | `true` liga os e-mails transacionais |
+| `RESEND_API_KEY` | não | Chave do Resend. Sem ela (ou com `EMAIL_ENABLED=false`), os envios são ignorados com log |
+| `EMAIL_FROM` | não (`onboarding@resend.dev`) | Remetente, de um domínio verificado no Resend |
+| `ANTHROPIC_API_KEY` | não | Chave da API da Anthropic para o assistente. Sem ela, `POST /assistant/chat` responde 503 e o resto do site funciona normalmente |
+| `ANTHROPIC_CHAT_MODEL` | não (`claude-haiku-5-5`) | Modelo usado pelo assistente |
+
+As chaves do Resend e da Anthropic ficam **só no back-end**. O front nunca as recebe: ele chama a
+nossa API, e a API chama os serviços externos.
 
 Gerar um segredo: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 (use valores **diferentes** para `JWT_SECRET` e `AUDIT_SECRET`).
@@ -113,7 +123,8 @@ O job de liquidação não roda nos testes: só o `server.js` o inicia, e os tes
 Cobertura: lances (todas as regras de recusa, anti-sniping, concorrência com `FOR UPDATE`), carteira
 (comprometido e liberação ao ser superado), liquidação (com e sem lances, débito/crédito, comprovante,
 idempotência, lance × liquidação simultâneos), auditoria (alteração, remoção e inserção direto no banco)
-e privacidade.
+e privacidade. Extras: o documento OpenAPI (válido e cobrindo todas as rotas), e-mails (Resend
+simulado) e assistente (API da Anthropic simulada). **Nenhum teste chama serviço pago.**
 
 ## Endpoints
 
@@ -142,6 +153,8 @@ e privacidade.
 | `GET /audit/:lotId` | público | Verificação da corrente de lances |
 | `GET /receipts/:code` | público | Comprovante de arremate |
 | `GET /images/aic/:imageId` | público | Proxy das imagens da AIC (ver abaixo) |
+| `POST /assistant/chat` | público (10/min por IP) | Pergunta ao assistente `{ message, history? }` → `{ reply }` |
+| `GET /docs` | público | Swagger UI (`/docs/openapi.json` = documento bruto) |
 
 Erros seguem o formato `{ "error": { "code": "...", "message": "mensagem em português" } }`.
 Dinheiro trafega **sempre em centavos** (inteiros).
@@ -230,6 +243,68 @@ de um lote para outro. Sala, auditoria e comprovante nunca expõem nome, e-mail 
   (Resend lento); que falhas não desfazem nada; que `@demo.com` e o envio desativado são ignorados;
   e que o HTML é escapado.
 
+## Assistente com IA (chat flutuante)
+
+Um botão no canto de todas as páginas abre um chat que tira dúvidas sobre o site: como dar lance,
+carteira, saldo comprometido, anti-sniping, liquidação, comprovante, auditoria, cadastro e papéis.
+
+- **Back-end:** `POST /assistant/chat` usa o SDK oficial (`@anthropic-ai/sdk`) com o modelo de
+  `ANTHROPIC_CHAT_MODEL` (padrão `claude-haiku-5-5`, o mais rápido e barato).
+- **Base de conhecimento:** o system prompt (`src/services/assistant/systemPrompt.js`) contém as
+  regras **reais** do sistema, com os mesmos valores do código (mínimo do lance, ordem das recusas,
+  anti-sniping de 2 min, depósito de até R$ 100.000,00, liquidação a cada 15 s...). Se uma regra
+  mudar no código, o prompt precisa ser atualizado junto.
+- **Escopo fechado:** ele só fala da Casa de Leilões. Outros assuntos recebem uma recusa educada, e
+  tentativas de "ignore as instruções" também.
+- **Sem acesso a nada:** a chamada não tem ferramentas (*tools*). O modelo só recebe texto e devolve
+  texto, então não executa ações e não lê dados de usuários, nem se for enganado.
+- **Proteções de custo e abuso:**
+  - 10 mensagens por minuto por IP (`express-rate-limit`; `trust proxy` em produção para pegar o
+    IP real atrás do proxy do Render);
+  - mensagem de até 500 caracteres;
+  - só as últimas 6 mensagens do histórico vão para o modelo;
+  - `max_tokens: 800` e `effort: low` (o Haiku 5.5 raciocina antes de responder, e esse raciocínio
+    conta no `max_tokens`);
+  - timeout de 10 s por tentativa (1 nova tentativa automática).
+- **Falhas:** sem chave, com chave inválida, com timeout ou com a API fora, a rota responde
+  `503 "Assistente indisponível no momento"` e o widget mostra essa mensagem. O detalhe fica só no log.
+- **Texto puro:** o prompt pede respostas sem markdown, e o back ainda remove `**`, `#` e crases
+  que escaparem. O front exibe tudo como texto: o React escapa o conteúdo, e nada da IA vira HTML.
+- **Widget:** mensagem de boas-vindas, 4 sugestões de perguntas, Enter envia (Shift+Enter quebra a
+  linha), contador de caracteres, "digitando...", Esc fecha e devolve o foco ao botão. Funciona nos
+  dois temas e, no celular, o painel ocupa a largura da tela.
+- **Testes:** `tests/assistant.test.js`, com o SDK simulado (sem gastar créditos). Cobre a resposta,
+  os parâmetros enviados (modelo do env, system prompt, sem tools), o corte do histórico, as
+  mensagens vazias ou longas, o 503 sem chave e com a API fora, a remoção de markdown e o 429 do
+  limite por IP.
+
+## Como testar os extras localmente
+
+**1. Swagger:** com a API rodando, abra <http://localhost:3333/docs>. Faça `POST /auth/login` com
+`ana@demo.com` / `senha123`, copie o `token`, clique em **Authorize** e teste, por exemplo,
+`POST /lots/{id}/bids` com um valor baixo para ver a recusa "Lance abaixo do mínimo". O link
+"Documentação da API" fica no rodapé do site.
+
+**2. E-mails (Resend):**
+- *Sem chave (padrão):* dê um lance que cubra outro e veja no terminal da API
+  `[email] conta de demonstração, não enviado...` ou `[email] envio desativado...`.
+- *Envio real:* crie uma conta no Resend e coloque no `backend/.env` `EMAIL_ENABLED=true`, a
+  `RESEND_API_KEY` e o `EMAIL_FROM="Casa de Leilões <onboarding@resend.dev>"`. Com esse remetente
+  de teste, o Resend só entrega no e-mail do dono da conta. Cadastre dois licitantes reais (o seed
+  usa `@demo.com`, que nunca recebe), um deles com o seu e-mail, deposite saldo e dê lances
+  alternados para receber o "Você foi superado". Para "Você venceu" e "Seu lote foi encerrado",
+  crie um lote curto (5 min) e espere a liquidação.
+- *Testes:* `npx jest tests/email.test.js`.
+
+**3. Assistente:**
+- *Sem chave:* deixe `ANTHROPIC_API_KEY` vazia, abra o site e pergunte algo. O widget mostra
+  "Assistente indisponível no momento" e o resto do site segue normal.
+- *Com chave:* coloque a `ANTHROPIC_API_KEY` (crie em console.anthropic.com) no `backend/.env` e
+  reinicie a API. Clique numa sugestão, pergunte algo fora do tema ("qual a capital da França?")
+  para ver a recusa, e mande 11 mensagens em menos de 1 minuto para ver o limite. Via terminal:
+  `curl -X POST localhost:3333/assistant/chat -H 'Content-Type: application/json' -d '{"message":"Como funciona o anti-sniping?"}'`
+- *Testes (sem gastar créditos):* `npx jest tests/assistant.test.js`.
+
 ## Front-end
 
 | Rota | Página |
@@ -299,6 +374,10 @@ rewrite para rotas como `/lotes/1`. Assim, um F5 em qualquer página não dá 40
 `AUDIT_SECRET`, `JWT_EXPIRES_IN=1d`, `CORS_ORIGIN` (domínio da Vercel) e `AIC_USER_AGENT`
 (opcional). O `PORT` não deve ser definido: o próprio Render informa a porta.
 
+Extras (opcionais; sem eles o site funciona, só sem e-mail e sem assistente): `APP_URL` (domínio da
+Vercel), `EMAIL_ENABLED=true`, `RESEND_API_KEY`, `EMAIL_FROM`, `ANTHROPIC_API_KEY` e
+`ANTHROPIC_CHAT_MODEL=claude-haiku-5-5`.
+
 **Vercel (front):** `VITE_API_URL` = URL do Render, sem `/` final. O valor entra no **build**:
 se mudar, é preciso fazer um *Redeploy*.
 
@@ -348,5 +427,9 @@ npm run db:seed        # a trava impede rodar de novo com o banco populado
 - No Render gratuito o servidor "dorme" após ~15 min sem acesso: o primeiro acesso demora (~50 s),
   e a liquidação acontece na subida ou sob demanda. O Neon gratuito também suspende o banco
   quando ocioso (alguns décimos de segundo a mais na primeira consulta).
+- O limite do assistente (10/min por IP) fica na memória do processo: zera quando a API reinicia
+  e não é compartilhado entre instâncias. Para várias instâncias, o caminho seria um store no Redis.
+- O assistente pode errar como qualquer modelo de linguagem. O prompt restringe as respostas às
+  regras do site, mas a fonte de verdade continua sendo o back-end (a IA não decide nada).
 - O CORS aceita só as origens listadas em `CORS_ORIGIN`: os *preview deployments* da Vercel
   (URLs por branch) não acessam a API, a menos que sejam adicionados à lista.
