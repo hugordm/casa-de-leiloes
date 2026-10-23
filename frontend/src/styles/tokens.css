@@ -1,0 +1,89 @@
+/* Design tokens: TODAS as cores do site vêm daqui.
+   Tema claro em :root e escuro em [data-theme="dark"] — os componentes só usam var(--...),
+   então trocar o tema é trocar um atributo no <html>. Paleta: marfim, tinta e latão (casa de leilões). */
+
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --container: 1180px;
+
+  /* Tema claro */
+  --bg: #f6f2ea;
+  --surface: #fffdf9;
+  --surface-2: #f0ebe1;
+  --border: #e3dacb;
+  --border-strong: #cdbfa6;
+  --text: #1d1a16;
+  --text-muted: #6b6255;
+
+  --accent: #8a6a2f; /* latão */
+  --accent-strong: #6f5323;
+  --accent-soft: #f3e9d2;
+
+  --primary-bg: #1d1a16; /* botão principal: tinta */
+  --primary-bg-hover: #3a3329;
+  --primary-text: #f8f3e8;
+
+  --ok: #2f6f4a;
+  --ok-soft: #e3f0e7;
+  --danger: #a63a2c;
+  --danger-hover: #8a2f23;
+  --danger-soft: #f8e4e0;
+  --warn: #8f6312;
+  --warn-soft: #f7ecd4;
+  --info: #3b5b85;
+  --info-soft: #e4ebf5;
+  --live: #c0392b;
+
+  --focus: #b8862b;
+  --backdrop: rgba(20, 17, 13, 0.55);
+  --shadow-sm: 0 1px 2px rgba(29, 26, 22, 0.06);
+  --shadow: 0 1px 2px rgba(29, 26, 22, 0.05), 0 10px 30px rgba(29, 26, 22, 0.07);
+  --shadow-lg: 0 20px 60px rgba(29, 26, 22, 0.25);
+  --image-bg: #e9e2d4;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #12110f;
+  --surface: #1b1916;
+  --surface-2: #24211c;
+  --border: #302b24;
+  --border-strong: #4a4237;
+  --text: #ece5d8;
+  --text-muted: #a89f8f;
+
+  --accent: #d1ad66;
+  --accent-strong: #e4c58a;
+  --accent-soft: #2e271b;
+
+  --primary-bg: #d1ad66; /* no escuro, o botão principal vira latão */
+  --primary-bg-hover: #e4c58a;
+  --primary-text: #17150f;
+
+  --ok: #74c596;
+  --ok-soft: #1a2b21;
+  --danger: #f08a7a;
+  --danger-hover: #f5a597;
+  --danger-soft: #3a211c;
+  --warn: #e6b65f;
+  --warn-soft: #33291a;
+  --info: #93b3df;
+  --info-soft: #1c2533;
+  --live: #ff6b5c;
+
+  --focus: #e4c58a;
+  --backdrop: rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --image-bg: #24211c;
+
+  color-scheme: dark;
+}

@@ -27,6 +27,7 @@ test('visitante vê lances só com apelido, sem bloco "me"', async () => {
   const res = await getLot();
 
   expect(res.status).toBe(200);
+  expect(Date.parse(res.body.serverTime)).not.toBeNaN(); // hora do servidor para o cronômetro
   expect(res.body.lot.me).toBeUndefined();
   expect(res.body.lot.recentBids).toHaveLength(2);
   expect(res.body.lot.recentBids[0]).toEqual({
@@ -43,11 +44,14 @@ test('visitante vê lances só com apelido, sem bloco "me"', async () => {
 });
 
 test('licitante logado vê se está ganhando ou foi superado, e sua posição', async () => {
-  const brunoView = (await getLot(bruno)).body.lot.me;
-  expect(brunoView).toEqual({ status: 'leading', myBestBidCents: 105000, position: 1, totalBidders: 2 });
+  const brunoRes = (await getLot(bruno)).body;
+  expect(brunoRes.lot.me).toMatchObject({ status: 'leading', myBestBidCents: 105000, position: 1, totalBidders: 2 });
+  // O apelido do próprio usuário bate com o do lance dele no histórico
+  expect(brunoRes.lot.me.alias).toBe(brunoRes.lot.recentBids[0].bidderAlias);
 
   const anaView = (await getLot(ana)).body.lot.me;
-  expect(anaView).toEqual({ status: 'outbid', myBestBidCents: 100000, position: 2, totalBidders: 2 });
+  expect(anaView).toMatchObject({ status: 'outbid', myBestBidCents: 100000, position: 2, totalBidders: 2 });
+  expect(anaView.alias).toBe(brunoRes.lot.recentBids[1].bidderAlias);
 });
 
 test('token inválido na sala é tratado como visitante (não bloqueia)', async () => {

@@ -4,8 +4,8 @@ Plataforma de leilões de obras de arte (catálogo do Art Institute of Chicago),
 por polling, carteira simulada, liquidação automática, comprovante público e **auditoria à prova de
 adulteração** dos lances.
 
-> Teste técnico Elite Dev — Verzel. _README em construção: front-end, deploy e decisões técnicas
-> completas entram nas próximas fases._
+> Teste técnico Elite Dev — Verzel. _README em construção: deploy e decisões técnicas completas
+> entram nas próximas fases._
 
 ## Stack
 
@@ -13,7 +13,7 @@ adulteração** dos lances.
 |---|---|
 | Back-end | Node.js 20, Express 5, Prisma 5, PostgreSQL 16, JWT + bcrypt |
 | Testes | Jest + Supertest (banco de testes separado) |
-| Front-end | React + Vite + React Router _(Fase 6)_ |
+| Front-end | React 19, Vite 7, React Router 7, CSS puro com variáveis (tema claro/escuro) |
 | Local | Docker Compose (PostgreSQL) |
 
 Monorepo: `backend/` e `frontend/`.
@@ -37,7 +37,22 @@ npm run dev                 # API em http://localhost:3333 (+ job de liquidaçã
 
 Teste rápido: `curl localhost:3333/health` → `{"status":"ok","database":"ok",...}`
 
-## Variáveis de ambiente (`backend/.env`)
+```bash
+# 3. Front-end (em outro terminal)
+cd frontend
+cp .env.example .env        # VITE_API_URL=http://localhost:3333
+npm install
+npm run dev                 # http://localhost:5173
+```
+
+Com os dois rodando, abra http://localhost:5173 e entre com uma das contas do seed.
+O `CORS_ORIGIN` padrão da API já libera `http://localhost:5173`.
+
+## Variáveis de ambiente
+
+Front-end (`frontend/.env`): `VITE_API_URL`, o endereço da API (padrão `http://localhost:3333`).
+
+Back-end (`backend/.env`):
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
@@ -109,6 +124,7 @@ e privacidade.
 | `GET /me/lots` | leiloeiro | Meus lotes, resultado de cada um e total recebido |
 | `GET /audit/:lotId` | público | Verificação da corrente de lances |
 | `GET /receipts/:code` | público | Comprovante de arremate |
+| `GET /images/aic/:imageId` | público | Proxy das imagens da AIC (ver abaixo) |
 
 Erros seguem o formato `{ "error": { "code": "...", "message": "mensagem em português" } }`.
 Dinheiro trafega **sempre em centavos** (inteiros).
@@ -174,9 +190,57 @@ O licitante aparece como `Licitante #XXXXXX`, onde `XXXXXX` = HMAC(`AUDIT_SECRET
 O apelido é o mesmo dentro de um lote e diferente entre lotes, então não dá para rastrear a mesma pessoa
 de um lote para outro. Sala, auditoria e comprovante nunca expõem nome, e-mail ou id do licitante.
 
+## Front-end
+
+| Rota | Página |
+|---|---|
+| `/` | Vitrine: abas ao vivo/agendados/encerrados, busca e filtro de preço (filtros na URL) |
+| `/lotes/:id` | Sala: polling de 2 s, cronômetro, "você está ganhando/foi superado", posição, lance |
+| `/auditoria/:id` | Selo "Íntegro" / "Adulterado no lance #N" e a corrente em blocos |
+| `/comprovante/:code` | Comprovante com botão de copiar o link |
+| `/login`, `/cadastro` | Acesso (no cadastro se escolhe licitante ou leiloeiro) |
+| `/carteira`, `/meus-arremates` | Licitante: saldo total/comprometido/disponível, depósito, extrato; arremates |
+| `/painel`, `/painel/novo-lote` | Leiloeiro: resultados, total recebido, cancelar; criar lote buscando no catálogo |
+
+Pontos principais:
+- **Comunicação com a API**:
+  - Todas as chamadas passam por `src/api/client.js`, que monta a URL, envia o token
+    (`Authorization: Bearer`) e converte erros na mensagem em português da API.
+  - O token fica no `localStorage`.
+  - Se uma chamada com token recebe 401, a sessão é encerrada e o usuário vai para o login com um aviso.
+- **Sala do lote**:
+  - O polling encadeia `setTimeout`s e pausa quando a aba fica oculta; ao sair da página, ele para.
+  - O cronômetro usa a **hora do servidor**: a API devolve `serverTime`, e o front calcula a
+    diferença para o relógio local.
+  - Quando o anti-sniping estende o fim, o cronômetro acompanha e aparece o aviso "+2 min".
+- **Padrões de interface**:
+  - Nenhum `alert`/`confirm`. Ações importantes passam por um `<ConfirmDialog>` acessível (Esc,
+    clique fora, foco preso e devolvido ao botão de origem) e o resultado aparece em toasts.
+  - Botões ficam desabilitados com spinner durante a requisição.
+- **Tema**:
+  - Todas as cores ficam em variáveis CSS (`src/styles/tokens.css`).
+  - Na primeira visita, o site segue `prefers-color-scheme`; depois vale a escolha salva no `localStorage`.
+  - O tema é aplicado antes do React carregar, para a tela não "piscar".
+
+### Proxy de imagens
+
+O servidor de imagens da AIC (IIIF) responde **403** (Cloudflare) a requisições sem o cabeçalho
+`AIC-User-Agent`, e uma tag `<img>` não consegue enviar cabeçalhos. Por isso a API expõe
+`GET /images/aic/:imageId`: ela busca a imagem com o cabeçalho, com timeout de 5 s, e devolve com
+cache de 7 dias.
+
+A rota só aceita ids no formato UUID e sempre monta a URL do artic.edu, então não funciona como
+proxy aberto (SSRF). O banco guarda a URL original da AIC (snapshot), e a API troca pelo endereço
+do proxy só na resposta.
+
 ## Limitações conhecidas
 
 - Atualização da sala por polling (2s), e não por WebSocket.
+- O token JWT fica no `localStorage`: é simples e funciona entre domínios (Vercel + Render), mas um
+  XSS conseguiria lê-lo. A alternativa seria um cookie `httpOnly`, que exige cuidados de CSRF e
+  `SameSite` entre domínios.
+- As imagens dependem da AIC pelo proxy: se a AIC cair, as imagens novas falham (o site mostra
+  "Imagem indisponível"), mas todo o resto continua funcionando.
 - O job de liquidação roda dentro do processo da API. Com várias instâncias, a trava + idempotência
   evitam liquidação dupla, mas o trabalho seria repetido.
 - No Render gratuito o servidor "dorme": o primeiro acesso demora, e a liquidação acontece na subida

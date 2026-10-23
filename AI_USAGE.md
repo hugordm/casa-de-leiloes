@@ -104,3 +104,26 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 6 — Front-end (React + Vite + React Router)
+
+**Gerado com IA:**
+- Projeto `frontend/` (Vite 7, React 19, React Router 7), `VITE_API_URL` com `.env.example`.
+- `src/api/client.js` (fetch central: token, erros da API, 401 → sessão expirada, relógio do
+  servidor) e `src/api/endpoints.js`.
+- Contextos: `AuthContext` (sessão, logout intencional × expirado), `ThemeContext` (tema + script
+  anti-"piscar" no `index.html`), `ToastContext`, `ConfirmContext` + `ConfirmDialog` acessível.
+- Hooks `usePolling` (pausa com aba oculta, para ao sair) e `useServerNow`; `utils/serverClock.js`.
+- Componentes (Header responsivo, Button com loading, Countdown, LotCard, MoneyInput, LotImage...)
+  e as 11 páginas: vitrine, sala, auditoria, comprovante, login, cadastro, carteira, meus arremates,
+  painel, novo lote e 404.
+- CSS em `styles/` (tokens dos dois temas, base, componentes, páginas), responsivo.
+- Back-end: `serverTime` em `GET /lots` e `/lots/:id`, `me.alias` na sala, e **proxy de imagens**
+  `GET /images/aic/:imageId` (a AIC passou a bloquear com 403 o acesso direto às imagens), com testes.
+- Verificação com navegador real (Playwright + Chromium headless, fora do repositório): 47 checagens
+  de ponta a ponta nos dois temas e no celular. Bugs encontrados e corrigidos nesse processo:
+  logout numa página protegida levava ao login em vez da vitrine; imagens bloqueadas pela AIC;
+  cronômetro quebrando linha; histórico de lances apertado no celular.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_

@@ -123,6 +123,30 @@ Se aceito:
 - Dark mode: variáveis CSS + toggle salvo em localStorage.
 - Exibir a mensagem exata de erro de cada lance recusado.
 
+### Padrões de interface (obrigatórios em todas as páginas)
+- NUNCA usar window.alert, window.confirm ou window.prompt.
+- Ações destrutivas ou irreversíveis (cancelar lote, dar lance, depositar,
+  sair) pedem confirmação num componente <ConfirmDialog> próprio:
+  título, mensagem explicando a consequência, botão "Cancelar" e botão
+  de confirmar (vermelho quando destrutivo). Fecha com Esc ou clique fora,
+  prende o foco dentro do modal enquanto aberto e devolve o foco ao botão
+  de origem ao fechar (acessibilidade).
+- Mensagens de sucesso e erro aparecem em toasts estilizados (canto da tela,
+  somem sozinhos), nunca em alert. Erros de lance mostram a mensagem exata
+  da API.
+- Botões mostram estado de carregamento e ficam desabilitados enquanto a
+  requisição está em andamento (evita clique duplo).
+- Dark mode: todas as cores em variáveis CSS (:root e [data-theme="dark"]),
+  toggle no cabeçalho, escolha salva no localStorage e, na primeira visita,
+  seguir a preferência do sistema (prefers-color-scheme). O modal, os toasts
+  e todos os componentes precisam funcionar bem nos dois temas.
+
+  - Campos de senha têm botão "olho" para mostrar/ocultar (type="button",
+  aria-label "Mostrar senha"/"Ocultar senha"), no login, cadastro e
+  redefinição de senha.
+  - Senha com no mínimo 8 caracteres: validar no front (mensagem antes de
+  enviar) e no back (regra que vale de verdade).
+
 ## Seed (`prisma/seed.js`)
 - 1 leiloeiro, 2 licitantes com saldo, ao menos 1 lote AO VIVO com lances abertos (com corrente de hashes válida),
   1 agendado e 1 encerrado. Credenciais documentadas no README.
@@ -146,3 +170,51 @@ liquidação (débito/crédito/comprovante), auditoria detecta alteração/remo�
 Visão geral, arquitetura, como rodar local (com e sem Docker), variáveis de ambiente, seed e credenciais,
 como rodar os testes, links de deploy, explicação das regras de lance e da técnica de auditoria,
 decisões técnicas, limitações conhecidas (ex.: Render gratuito "dorme" e o primeiro acesso demora).
+
+## Extras (Fase 8, só depois do deploy funcionando)
+
+### Assistente (chat flutuante)
+- Back-end: POST /assistant/chat chama a API da Anthropic com o modelo
+  Claude Haiku (confirmar o identificador atual na documentação).
+  ANTHROPIC_API_KEY só no env do back-end. NUNCA no front.
+- Limite por IP (ex.: 10 mensagens/min), mensagem de até 500 caracteres,
+  histórico curto (últimas ~6 mensagens), max_tokens baixo, timeout.
+- System prompt: assistente da Casa de Leilões; só explica regras e uso do
+  site (lances, carteira, anti-sniping, liquidação, auditoria); respostas
+  curtas, em português, em texto puro SEM markdown; não executa ações nem
+  acessa dados de usuários.
+- Sem chave ou com a API fora: responde 503 e o widget mostra
+  "Assistente indisponível no momento"; o resto do site segue normal.
+- Front: botão flutuante no canto, painel de chat estilizado nos dois
+  temas, respostas exibidas como texto puro.
+- Testes com a API da Anthropic simulada (mock), sem gastar créditos.
+
+### Swagger
+- swagger-ui-express em GET /docs, com openapi.yaml cobrindo todos os
+  endpoints, autenticação Bearer, exemplos de requisição/resposta e o
+  formato padrão de erro.
+
+### E-mails transacionais (Resend)
+- RESEND_API_KEY e EMAIL_FROM (domínio verificado) só no env do back-end.
+  EMAIL_ENABLED=false por padrão; sem chave, os envios são ignorados.
+- Enviar: "Você venceu" (com link do comprovante) e "Seu lote foi
+  encerrado" (para o leiloeiro, com o resultado) na liquidação;
+  "Você foi superado" (com link da sala) quando o líder é coberto.
+- Envio SEMPRE depois do commit da transação e sem bloquear a resposta
+  (fire-and-forget com log de erro). Falha no e-mail nunca afeta lance
+  ou liquidação.
+- Não enviar para domínios de demonstração (@demo.com).
+- Não revelar quem deu o lance no e-mail de "superado".
+- HTML simples e responsivo, com versão em texto puro.
+- Testes com o cliente do Resend simulado (mock).
+
+### Esqueci minha senha (último extra, não exigido pelo PDF)
+- POST /auth/forgot-password: resposta sempre genérica ("Se o e-mail
+  estiver cadastrado, você receberá um link"); limite por IP.
+- Token aleatório de uso único, guardado só como hash, válido por 30 min.
+- E-mail via Resend com link para /redefinir-senha?token=...
+- POST /auth/reset-password: valida token, aplica a regra de 8
+  caracteres, invalida o token e registra passwordChangedAt no usuário;
+  o middleware auth recusa JWTs emitidos antes dessa data.
+- Testes: token expirado, token reutilizado, e-mail inexistente com a
+  mesma resposta, JWT antigo recusado após a troca.

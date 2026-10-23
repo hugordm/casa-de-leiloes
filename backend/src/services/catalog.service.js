@@ -3,6 +3,7 @@
 // Depois de criado, o lote nunca mais depende desta API.
 const env = require('../config/env');
 const AppError = require('../errors/AppError');
+const { toPublicImageUrl } = require('./image.service');
 
 const TIMEOUT_MS = 5000;
 const SEARCH_LIMIT = 20;
@@ -67,7 +68,9 @@ async function search(q) {
   const { status, body } = await requestJson(`/artworks/search?${params}`);
   if (status !== 200 || !Array.isArray(body.data)) throw unavailable();
 
-  return body.data.map(toArtwork);
+  // Na busca, a imagem sai pelo nosso proxy (o navegador não acessa a AIC direto).
+  // Em getArtwork (criação do lote) mantemos a URL original: é ela que vai para o snapshot.
+  return body.data.map(toArtwork).map((art) => ({ ...art, imageUrl: toPublicImageUrl(art.imageUrl) }));
 }
 
 async function getArtwork(externalId) {

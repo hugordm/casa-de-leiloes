@@ -4,6 +4,7 @@ const AppError = require('../errors/AppError');
 const catalogService = require('./catalog.service');
 const settlementService = require('./settlement.service');
 const hashChain = require('./hashChain.service');
+const { toPublicImageUrl } = require('./image.service');
 const { getDisplayStatus, getMinNextBidCents } = require('../utils/lot');
 const { isCents, parseDate, parseId } = require('../utils/validation');
 
@@ -31,7 +32,7 @@ function serializeLot(lot, now = new Date()) {
     externalId: lot.externalId,
     title: lot.title,
     artist: lot.artist,
-    imageUrl: lot.imageUrl,
+    imageUrl: toPublicImageUrl(lot.imageUrl), // via proxy da API (ver image.service)
     attributes: lot.attributes,
     startingBidCents: lot.startingBidCents,
     minIncrementCents: lot.minIncrementCents,
@@ -251,6 +252,8 @@ async function getViewerSituation(lot, userId) {
 
   return {
     status,
+    // O próprio apelido (só para quem está logado): permite destacar "meus lances" no histórico.
+    alias: hashChain.bidderAlias(lot.id, userId),
     myBestBidCents: ranking[index]._max.amountCents,
     position: index + 1,
     totalBidders: ranking.length,

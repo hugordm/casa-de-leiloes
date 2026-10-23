@@ -18,13 +18,14 @@ function lotIdFrom(req) {
 // GET /lots?status=live|scheduled|ended&search=&minPrice=&maxPrice=  (público)
 router.get('/', async (req, res) => {
   const lots = await lotService.listLots(req.query);
-  res.json({ lots });
+  // serverTime: o front usa a hora do SERVIDOR nos cronômetros (não a do computador do usuário).
+  res.json({ lots, serverTime: new Date().toISOString() });
 });
 
 // GET /lots/:id  (público; se for um licitante logado, inclui "me" com a situação dele)
 router.get('/:id', optionalAuth, async (req, res) => {
   const lot = await lotService.getLot(lotIdFrom(req), req.user);
-  res.json({ lot });
+  res.json({ lot, serverTime: new Date().toISOString() });
 });
 
 // POST /lots  (AUCTIONEER)  { externalId, startingBidCents, minIncrementCents, startsAt?, endsAt }

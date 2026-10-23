@@ -3,6 +3,7 @@
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const { bidderAlias } = require('./hashChain.service');
+const { toPublicImageUrl } = require('./image.service');
 
 async function getReceipt(code) {
   const receipt =
@@ -21,7 +22,7 @@ async function getReceipt(code) {
       id: lot.id,
       title: lot.title,
       artist: lot.artist,
-      imageUrl: lot.imageUrl,
+      imageUrl: toPublicImageUrl(lot.imageUrl),
       attributes: lot.attributes,
       bidCount: lot.bidCount,
       endsAt: lot.endsAt,
