@@ -1,7 +1,9 @@
-// Regras de lotes: criação (com snapshot da obra), cancelamento, listagem e detalhe.
+// Regras de lotes: criação (com snapshot da obra), cancelamento, listagem, detalhe e painel do leiloeiro.
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const catalogService = require('./catalog.service');
+const settlementService = require('./settlement.service');
+const hashChain = require('./hashChain.service');
 const { getDisplayStatus, getMinNextBidCents } = require('../utils/lot');
 const { isCents, parseDate, parseId } = require('../utils/validation');
 
@@ -85,20 +87,29 @@ async function createLot(auctioneerId, body = {}) {
   // o lote não depende mais da API (vitrine, sala e auditoria funcionam se ela cair).
   const artwork = await catalogService.getArtwork(externalId);
 
-  const lot = await prisma.lot.create({
-    data: {
-      auctioneerId,
-      externalId: artwork.externalId,
-      title: artwork.title,
-      artist: artwork.artist,
-      imageUrl: artwork.imageUrl,
-      attributes: artwork.attributes,
-      startingBidCents,
-      minIncrementCents,
-      startsAt,
-      endsAt,
-    },
-    include: includeAuctioneer,
+  const lot = await prisma.$transaction(async (tx) => {
+    const created = await tx.lot.create({
+      data: {
+        auctioneerId,
+        externalId: artwork.externalId,
+        title: artwork.title,
+        artist: artwork.artist,
+        imageUrl: artwork.imageUrl,
+        attributes: artwork.attributes,
+        startingBidCents,
+        minIncrementCents,
+        startsAt,
+        endsAt,
+      },
+    });
+    // Selo inicial (0 lances). Sem ele, quem apagasse TODOS os lances e zerasse
+    // o lote no banco deixaria a auditoria sem como perceber.
+    // (O selo depende do id, por isso é gravado logo após criar, na mesma transação.)
+    return tx.lot.update({
+      where: { id: created.id },
+      data: { seal: hashChain.computeSeal({ lotId: created.id, bidCount: 0, lastHash: null }) },
+      include: includeAuctioneer,
+    });
   });
 
   return serializeLot(lot);
@@ -233,20 +244,32 @@ async function getViewerSituation(lot, userId) {
   const index = ranking.findIndex((r) => r.bidderId === userId);
   if (index === -1) return { status: 'none' }; // ainda não deu lance neste lote
 
+  // Liquidado: ganhou ou perdeu. Antes disso: está ganhando ou foi superado.
+  let status;
+  if (lot.status === 'SETTLED') status = lot.winnerId === userId ? 'won' : 'lost';
+  else status = lot.leaderId === userId ? 'leading' : 'outbid';
+
   return {
-    status: lot.leaderId === userId ? 'leading' : 'outbid',
+    status,
     myBestBidCents: ranking[index]._max.amountCents,
     position: index + 1,
     totalBidders: ranking.length,
+    // Só o vencedor recebe o link do próprio comprovante na sala.
+    receiptCode: status === 'won' ? lot.receipt?.code ?? null : undefined,
   };
 }
 
 // viewer = req.user (opcional). Visitante vê tudo, menos o bloco "me".
 async function getLot(lotId, viewer) {
+  // Liquidação sob demanda: se o lote já venceu e o job ainda não passou
+  // (ex.: servidor estava dormindo), liquida agora antes de responder.
+  await settlementService.settleIfDue(lotId);
+
   const lot = await prisma.lot.findUnique({
     where: { id: lotId },
     include: {
       ...includeAuctioneer,
+      receipt: { select: { code: true } },
       // Últimos lances, só com apelido (nunca nome/e-mail/id do licitante)
       bids: {
         orderBy: { seq: 'desc' },
@@ -261,6 +284,7 @@ async function getLot(lotId, viewer) {
   const result = {
     ...serializeLot(lot),
     leaderAlias: lot.bids[0]?.bidderAlias ?? null, // o último lance é sempre do líder
+    winnerAlias: lot.winnerId ? hashChain.bidderAlias(lot.id, lot.winnerId) : null,
     recentBids: lot.bids,
   };
   if (viewer?.role === 'BIDDER') {
@@ -269,4 +293,45 @@ async function getLot(lotId, viewer) {
   return result;
 }
 
-module.exports = { createLot, cancelLot, listLots, getLot, serializeLot };
+// ---------- Painel do leiloeiro (GET /me/lots) ----------
+
+// Resultado de um lote do ponto de vista do leiloeiro.
+function getAuctioneerResult(lot, now) {
+  if (lot.status === 'CANCELLED') return 'cancelled';
+  if (lot.status === 'SETTLED') return lot.winnerId ? 'sold' : 'unsold';
+  const display = getDisplayStatus(lot, now);
+  return display === 'ended' ? 'awaiting_settlement' : display; // 'scheduled' | 'live'
+}
+
+async function listMyLots(auctioneerId) {
+  // Garante que lotes vencidos deste leiloeiro já apareçam liquidados.
+  await settlementService.settleDueLots({ auctioneerId });
+
+  const lots = await prisma.lot.findMany({
+    where: { auctioneerId },
+    orderBy: { createdAt: 'desc' },
+    include: { ...includeAuctioneer, receipt: { select: { code: true } } },
+  });
+
+  // Total recebido = soma dos CREDIT na carteira (o dinheiro que de fato entrou).
+  const credits = await prisma.walletTransaction.aggregate({
+    _sum: { amountCents: true },
+    where: { userId: auctioneerId, type: 'CREDIT' },
+  });
+
+  const now = new Date();
+  const items = lots.map((lot) => ({
+    lot: serializeLot(lot, now),
+    result: getAuctioneerResult(lot, now),
+    winnerAlias: lot.winnerId ? hashChain.bidderAlias(lot.id, lot.winnerId) : null,
+    receiptCode: lot.receipt?.code ?? null,
+  }));
+
+  return {
+    totalReceivedCents: credits._sum.amountCents ?? 0,
+    soldCount: items.filter((i) => i.result === 'sold').length,
+    lots: items,
+  };
+}
+
+module.exports = { createLot, cancelLot, listLots, getLot, listMyLots, serializeLot };

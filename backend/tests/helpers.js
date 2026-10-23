@@ -3,6 +3,7 @@ const request = require('supertest');
 const app = require('../src/app');
 const prisma = require('../src/lib/prisma');
 const { signToken } = require('../src/services/auth.service');
+const { computeSeal } = require('../src/services/hashChain.service');
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -36,7 +37,7 @@ async function createUser({ role = 'BIDDER', balanceCents = 0, name } = {}) {
 // Padrão: AO VIVO (começou há 1h, termina em 1h), inicial R$ 1.000,00, incremento R$ 50,00.
 async function createLot(auctioneer, overrides = {}) {
   const now = Date.now();
-  return prisma.lot.create({
+  const lot = await prisma.lot.create({
     data: {
       auctioneerId: auctioneer.id,
       externalId: 1,
@@ -50,6 +51,11 @@ async function createLot(auctioneer, overrides = {}) {
       endsAt: new Date(now + HOUR),
       ...overrides,
     },
+  });
+  // Selo inicial, igual ao lot.service.createLot (lote sem lances também é auditável).
+  return prisma.lot.update({
+    where: { id: lot.id },
+    data: { seal: computeSeal({ lotId: lot.id, bidCount: 0, lastHash: null }) },
   });
 }
 

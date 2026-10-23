@@ -9,6 +9,7 @@ const catalogRoutes = require('./routes/catalog.routes');
 const lotsRoutes = require('./routes/lots.routes');
 const walletRoutes = require('./routes/wallet.routes');
 const meRoutes = require('./routes/me.routes');
+const publicRoutes = require('./routes/public.routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
@@ -22,6 +23,7 @@ app.use('/catalog', catalogRoutes);
 app.use('/lots', lotsRoutes);
 app.use('/wallet', walletRoutes);
 app.use('/me', meRoutes);
+app.use(publicRoutes); // /audit/:lotId e /receipts/:code
 
 // Precisam ficar por último: 404 para rotas desconhecidas e tratamento central de erros.
 app.use(notFound);

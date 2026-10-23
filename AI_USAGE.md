@@ -79,3 +79,28 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 5 — Liquidação + comprovante + corrente de hashes + auditoria (com testes)
+
+**Gerado com IA:**
+- `src/services/settlement.service.js`: `settleLot` em transação com a mesma trava `FOR UPDATE` dos
+  lances; após travar, reconfere status (idempotência) e `endsAt` (anti-sniping pode ter estendido);
+  débito/crédito com `WalletTransaction` DEBIT/CREDIT, `Receipt` com código aleatório, lote SETTLED.
+  `settleDueLots` (lote com erro não bloqueia os demais) e `settleIfDue` (sob demanda).
+- `src/jobs/settlement.job.js`: roda na subida e a cada 15s, sem rodadas sobrepostas; iniciado só
+  pelo `server.js` (nunca nos testes).
+- `hashChain.verifyChain`: verificação pura da corrente (seq contíguo, prevHash, HMAC, autor via
+  apelido, fim da corrente, selo e coerência do estado do lote). Selo gravado já na criação do lote.
+- `src/services/audit.service.js`, `src/services/receipt.service.js`, `src/routes/public.routes.js`
+  (`GET /audit/:lotId`, `GET /receipts/:code`), `GET /me/lots` (resultado + total recebido),
+  `receiptCode` em `/me/bids` e estados `won`/`lost` na sala.
+- `env.js`: `JWT_SECRET` e `AUDIT_SECRET` obrigatórios com no mínimo 16 caracteres.
+- Seed refeito com o código real de hash e de liquidação (lote ao vivo de 30 dias com lances,
+  lote que termina em 5 min, agendado e lote liquidado com comprovante), ids previsíveis.
+- README inicial (execução, variáveis, seed/credenciais, testes, endpoints, regras e auditoria).
+- Testes: `settlement.test.js` e `audit.test.js` (28 novos; 55 no total). Validados por mutação:
+  removendo a reconferência do `endsAt`, a checagem de status, a trava do lote ou a verificação do
+  selo, os testes correspondentes falham.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_

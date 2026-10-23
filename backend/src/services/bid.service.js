@@ -2,6 +2,7 @@
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const walletService = require('./wallet.service');
+const settlementService = require('./settlement.service');
 const hashChain = require('./hashChain.service');
 const { serializeLot } = require('./lot.service');
 const { getMinNextBidCents } = require('../utils/lot');
@@ -124,10 +125,17 @@ async function placeBid(lotId, userId, amountCents) {
 
 // GET /me/bids — lotes em que o licitante deu lance, com a situação dele em cada um.
 async function listMyBids(userId) {
+  // Lotes vencidos que este usuário lidera são liquidados antes, para o arremate
+  // (e o comprovante) aparecer mesmo que o job ainda não tenha passado.
+  await settlementService.settleDueLots({ leaderId: userId });
+
   const lots = await prisma.lot.findMany({
     where: { bids: { some: { bidderId: userId } } },
     orderBy: { endsAt: 'desc' },
-    include: { auctioneer: { select: { id: true, name: true } } },
+    include: {
+      auctioneer: { select: { id: true, name: true } },
+      receipt: { select: { code: true } },
+    },
   });
 
   // Maior lance do usuário em cada lote
@@ -142,8 +150,10 @@ async function listMyBids(userId) {
   return lots.map((lot) => ({
     lot: serializeLot(lot, now),
     myBestBidCents: myMaxByLot.get(lot.id),
-    isLeader: lot.leaderId === userId && lot.status !== 'CANCELLED',
+    isLeader: lot.leaderId === userId && lot.status === 'ACTIVE',
     won: lot.winnerId === userId,
+    // Código do comprovante só nos lotes que ESTE usuário venceu.
+    receiptCode: lot.winnerId === userId ? lot.receipt?.code ?? null : null,
   }));
 }
 
