@@ -127,3 +127,23 @@ Registro, por fase, do que foi gerado com auxílio de IA (Claude Code) e do que 
 
 **Revisado/ajustado por mim:**
 - _(a preencher)_
+
+## Fase 7 — Deploy (Neon + Render + Vercel)
+
+**Gerado com IA:**
+- Passo a passo dos painéis do Neon, Render e Vercel, lista de variáveis de cada serviço e checklist
+  de ponta a ponta (no README, seção Deploy).
+- `schema.prisma` com `directUrl` (`DATABASE_URL` = pooler do Neon, `DIRECT_URL` = direta para migrations);
+  `DIRECT_URL` no `.env`, `.env.example` e nos testes.
+- `package.json`: CLI `prisma` movido para `dependencies` (o `npm ci` em produção não instala
+  devDependencies) e script `render-build` (`prisma generate && prisma migrate deploy`).
+- `env.js`: `CORS_ORIGIN` obrigatório em produção e normalizado (remove `/` final).
+- `seed.js`: trava que impede apagar um banco já populado (`SEED_FORCE=true` para forçar).
+- `frontend/vercel.json`: rewrite para `index.html` (F5 em rotas do React Router).
+- Segredos de produção novos em `backend/.env.production.local` (fora do git).
+- Validação local: testes também com `pgbouncer=true`; simulação do build do Render numa cópia limpa
+  com `NODE_ENV=production` e banco vazio (migrate deploy, seed, segundo seed recusado, auditoria
+  íntegra, redeploy sem migrations pendentes); CORS com origem permitida/negada e preflight.
+
+**Revisado/ajustado por mim:**
+- _(a preencher)_

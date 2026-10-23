@@ -4,8 +4,10 @@ Plataforma de leilões de obras de arte (catálogo do Art Institute of Chicago),
 por polling, carteira simulada, liquidação automática, comprovante público e **auditoria à prova de
 adulteração** dos lances.
 
-> Teste técnico Elite Dev — Verzel. _README em construção: deploy e decisões técnicas completas
-> entram nas próximas fases._
+> Teste técnico Elite Dev — Verzel.
+
+**Produção:** front <https://SEU-PROJETO.vercel.app> · API <https://SUA-API.onrender.com/health>
+_(links preenchidos após o deploy; veja [Deploy](#deploy))_
 
 ## Stack
 
@@ -56,12 +58,13 @@ Back-end (`backend/.env`):
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `DATABASE_URL` | sim | Conexão PostgreSQL |
+| `DATABASE_URL` | sim | Conexão PostgreSQL usada pela aplicação (no Neon: a do **pooler**, com `&pgbouncer=true`) |
+| `DIRECT_URL` | sim | Conexão direta, usada só pelas migrations (local: igual à `DATABASE_URL`) |
 | `JWT_SECRET` | sim (≥ 16 caracteres) | Assina os tokens de login |
 | `AUDIT_SECRET` | sim (≥ 16 caracteres) | Chave do HMAC da auditoria e dos apelidos. **Nunca** vai para o banco. A API não inicia sem ela |
 | `JWT_EXPIRES_IN` | não (`1d`) | Validade do token |
 | `PORT` | não (`3333`) | Porta da API |
-| `CORS_ORIGIN` | não (`http://localhost:5173`) | Origem(ns) do front, separadas por vírgula |
+| `CORS_ORIGIN` | **em produção, sim** (local: `http://localhost:5173`) | Origem(ns) do front, separadas por vírgula, sem `/` final |
 | `AIC_API_URL` / `AIC_USER_AGENT` | não | API do Art Institute (a AIC exige o cabeçalho `AIC-User-Agent`) |
 
 Gerar um segredo: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
@@ -70,6 +73,10 @@ Gerar um segredo: `node -e "console.log(require('crypto').randomBytes(32).toStri
 ## Seed e credenciais
 
 `npm run db:seed` **apaga tudo** e recria os dados com ids previsíveis. Senha de todos: **`senha123`**.
+
+**Trava de segurança:** se o banco já tiver usuários, o seed se recusa a rodar, para não apagar
+dados de produção por engano. Para recriar de propósito (ex.: no banco local):
+`SEED_FORCE=true npm run db:seed`.
 
 | Usuário | Papel | Situação após o seed |
 |---|---|---|
@@ -89,7 +96,7 @@ O seed imprime o código do comprovante do lote #4 (ex.: `GET /receipts/<código
 Observações:
 - O seed usa o mesmo código da aplicação para gerar a corrente de hashes e para liquidar, então
   `GET /audit/1` … `/audit/4` dão **íntegro**. Por isso ele precisa rodar com o **mesmo `AUDIT_SECRET`** da API.
-- Para rever a liquidação do lote #2, rode o seed de novo (o fim é sempre "agora + 5 min").
+- Para rever a liquidação do lote #2, rode o seed de novo com `SEED_FORCE=true` (o fim é sempre "agora + 5 min").
 
 ## Testes
 
@@ -233,6 +240,68 @@ A rota só aceita ids no formato UUID e sempre monta a URL do artic.edu, então 
 proxy aberto (SSRF). O banco guarda a URL original da AIC (snapshot), e a API troca pelo endereço
 do proxy só na resposta.
 
+## Deploy
+
+| Parte | Serviço | Configuração |
+|---|---|---|
+| Banco | **Neon** (PostgreSQL 16, região AWS `us-east-1`) | Duas strings: pooler (app) e direta (migrations) |
+| API | **Render**, Web Service gratuito (região Virginia) | Root `backend` · Build `npm ci && npm run render-build` · Start `npm start` · Health check `/health` |
+| Front | **Vercel** | Root `frontend` · Vite · `vercel.json` com rewrite para `index.html` |
+
+**Build da API (`render-build`):** `prisma generate && prisma migrate deploy`.
+- `migrate deploy` só aplica migrations já versionadas, nunca cria nem apaga nada; num redeploy
+  sem mudanças, ele responde "No pending migrations".
+- Ele usa a `DIRECT_URL`, porque o pooler (PgBouncer) não suporta os comandos de migração.
+- O CLI `prisma` fica em `dependencies`: com `NODE_ENV=production`, o `npm ci` não instala
+  `devDependencies`, e o build falharia sem ele.
+
+**Rotas do React Router na Vercel:** o `frontend/vercel.json` reescreve qualquer caminho para
+`/index.html`. A Vercel entrega primeiro os arquivos que existem (JS, CSS, favicon) e só cai no
+rewrite para rotas como `/lotes/1`. Assim, um F5 em qualquer página não dá 404.
+
+### Variáveis de ambiente em produção
+
+**Render (API):** `NODE_ENV=production`, `NODE_VERSION=22`, `DATABASE_URL` (pooler +
+`&pgbouncer=true&connect_timeout=15`), `DIRECT_URL` (direta + `&connect_timeout=15`), `JWT_SECRET`,
+`AUDIT_SECRET`, `JWT_EXPIRES_IN=1d`, `CORS_ORIGIN` (domínio da Vercel) e `AIC_USER_AGENT`
+(opcional). O `PORT` não deve ser definido: o próprio Render informa a porta.
+
+**Vercel (front):** `VITE_API_URL` = URL do Render, sem `/` final. O valor entra no **build**:
+se mudar, é preciso fazer um *Redeploy*.
+
+Os segredos de produção são **novos** (diferentes dos locais e diferentes entre si), gerados com
+`crypto.randomBytes(32)`. Eles ficam fora do git, em `backend/.env.production.local`.
+
+⚠️ **Nunca troque o `AUDIT_SECRET` depois de existirem lances:** todas as correntes passariam a
+aparecer como adulteradas, porque os hashes foram calculados com o segredo antigo.
+
+### Seed em produção (uma vez, manual)
+
+O Render gratuito não tem Shell, então o seed roda da máquina local, apontando para o Neon e com
+as **mesmas** variáveis da API (principalmente o `AUDIT_SECRET`):
+
+```bash
+cd backend
+set -a; source .env.production.local; set +a
+npm run db:seed        # a trava impede rodar de novo com o banco populado
+```
+
+### Checklist pós-deploy
+
+1. `GET /health` responde `{"status":"ok","database":"ok"}`. A 1ª chamada pode levar ~50 s,
+   porque o servidor estava dormindo.
+2. `GET /lots` lista os 2 lotes ao vivo.
+3. `GET /audit/1` responde `"intact": true` (o seed e a API usam o mesmo `AUDIT_SECRET`).
+4. `GET /images/aic/831a05de-d3f6-f4fa-a460-23008dd58dda` responde `200 image/jpeg`.
+5. A vitrine carrega com imagens e sem erro de CORS no console; F5 em `/lotes/1`, `/auditoria/1`
+   e `/painel` não dá 404.
+6. Ana (sala do lote 1) vê "Você foi superado" em até ~2 s depois de um lance do Bruno.
+7. Um depósito na carteira com confirmação funciona.
+8. O lote 2 é liquidado pelo job ~5 min após o seed; o comprovante aparece em "Meus arremates"
+   e o link copiado abre numa aba anônima.
+9. O painel do leiloeiro soma os lotes #2 e #4 no total recebido; a busca no catálogo funciona.
+10. Trocar o token no DevTools e fazer uma ação leva ao login com o aviso de sessão expirada.
+
 ## Limitações conhecidas
 
 - Atualização da sala por polling (2s), e não por WebSocket.
@@ -243,5 +312,8 @@ do proxy só na resposta.
   "Imagem indisponível"), mas todo o resto continua funcionando.
 - O job de liquidação roda dentro do processo da API. Com várias instâncias, a trava + idempotência
   evitam liquidação dupla, mas o trabalho seria repetido.
-- No Render gratuito o servidor "dorme": o primeiro acesso demora, e a liquidação acontece na subida
-  ou sob demanda.
+- No Render gratuito o servidor "dorme" após ~15 min sem acesso: o primeiro acesso demora (~50 s),
+  e a liquidação acontece na subida ou sob demanda. O Neon gratuito também suspende o banco
+  quando ocioso (alguns décimos de segundo a mais na primeira consulta).
+- O CORS aceita só as origens listadas em `CORS_ORIGIN`: os *preview deployments* da Vercel
+  (URLs por branch) não acessam a API, a menos que sejam adicionados à lista.

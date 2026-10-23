@@ -1,6 +1,10 @@
 // Popula o banco com dados de demonstração.
 // Rodar com: npm run db:seed   (APAGA os dados atuais e recria tudo, com ids previsíveis)
 //
+// TRAVA DE SEGURANÇA: se o banco já tiver usuários, o seed se recusa a rodar
+// (evita apagar dados de produção por engano). Para recriar de propósito:
+//   SEED_FORCE=true npm run db:seed
+//
 // Usa o MESMO código da aplicação para gerar a corrente de hashes e para liquidar,
 // então a auditoria dos lotes do seed dá "íntegra". Por isso o seed precisa rodar com
 // o mesmo AUDIT_SECRET da API (em produção, rode o seed com as variáveis do Render).
@@ -95,6 +99,16 @@ async function addBids(lot, bids) {
 }
 
 async function main() {
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0 && process.env.SEED_FORCE !== 'true') {
+    console.error(
+      `\nSeed cancelado: o banco já tem ${existingUsers} usuário(s) e o seed APAGA tudo.\n` +
+        'Se é isso mesmo que você quer (ex.: banco local), rode: SEED_FORCE=true npm run db:seed\n'
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   // Apaga tudo e reinicia os ids (lote #1 é sempre o "ao vivo", etc.).
   await prisma.$executeRawUnsafe(
     'TRUNCATE "WalletTransaction", "Receipt", "Bid", "Lot", "User" RESTART IDENTITY CASCADE'

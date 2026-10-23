@@ -20,8 +20,21 @@ function requiredSecret(name) {
   return value;
 }
 
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Lista de origens do CORS. Remove "/" final (erro comum: "https://x.vercel.app/" não
+// casaria com o cabeçalho Origin, que nunca tem barra). Em produção é obrigatória:
+// sem ela o padrão seria localhost e o front publicado ficaria bloqueado sem aviso claro.
+function corsOrigins() {
+  const raw = NODE_ENV === 'production' ? required('CORS_ORIGIN') : process.env.CORS_ORIGIN || 'http://localhost:5173';
+  return raw
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
 module.exports = {
-  NODE_ENV: process.env.NODE_ENV || 'development',
+  NODE_ENV,
   PORT: Number(process.env.PORT) || 3333,
   DATABASE_URL: required('DATABASE_URL'),
   JWT_SECRET: requiredSecret('JWT_SECRET'),
@@ -29,8 +42,8 @@ module.exports = {
   // Segredo da corrente de hashes da auditoria e dos apelidos. Fica só no ambiente, nunca no banco:
   // quem tiver acesso só ao banco não consegue recalcular os hashes. A API não inicia sem ele.
   AUDIT_SECRET: requiredSecret('AUDIT_SECRET'),
-  // Endereços do front autorizados no CORS (separados por vírgula)
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // Endereços do front autorizados no CORS (variável CORS_ORIGIN, separados por vírgula)
+  CORS_ORIGINS: corsOrigins(),
   // API do Art Institute of Chicago (catálogo de obras)
   AIC_API_URL: process.env.AIC_API_URL || 'https://api.artic.edu/api/v1',
   // A AIC bloqueia (Cloudflare) requisições sem este cabeçalho de identificação

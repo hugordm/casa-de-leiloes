@@ -13,6 +13,7 @@ if (!dbName.endsWith('_test')) {
 module.exports = {
   NODE_ENV: 'test',
   DATABASE_URL,
+  DIRECT_URL: DATABASE_URL, // migrations do banco de testes usam a mesma conexão
   JWT_SECRET: 'jwt-secret-de-teste',
   AUDIT_SECRET: 'audit-secret-de-teste',
 };

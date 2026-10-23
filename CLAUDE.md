@@ -163,7 +163,10 @@ liquidação (débito/crédito/comprovante), auditoria detecta alteração/remo�
 4. Lances + carteira + anti-sniping (com testes).
 5. Liquidação + comprovante + corrente de hashes + auditoria (com testes).
 6. Front-end: todas as páginas.
-7. Deploy (Render + Vercel), variáveis de ambiente, CORS.
+7. - Deploy: frontend na Vercel, API no Render (web service), banco no Neon
+  (PostgreSQL gratuito permanente; o banco gratuito do Render expira em
+  30 dias). Prisma com DATABASE_URL (pooler) e DIRECT_URL (direta, para
+  migrations).
 8. Opcionais restantes + README completo + AI_USAGE.md.
 
 ## README deve conter
