@@ -267,7 +267,7 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 
 **Revisado/ajustado por mim:**
 - Pedi depois de conferir o projeto contra os opcionais do PDF.
-- Teste em produção: _(a preencher)_
+- Teste em produção: cancelei como leiloeiro um lote com lances; o modal avisou o estorno, o valor voltou ao disponível do líder e o e-mail "Lote cancelado" chegou.
 
 ### Opcional — Docker Compose completo
 
