@@ -36,9 +36,6 @@ export function Header() {
     <header className="header">
       <div className="container header__inner">
         <Link to="/" className="brand" aria-label="Casa de Leilões — início">
-          <span className="brand__mark">
-            <Icon name="gavel" size={20} />
-          </span>
           <span className="brand__name">
             Casa de Leilões
             <small>Leilões de arte</small>

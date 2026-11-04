@@ -30,14 +30,15 @@ export const formatDateTime = (iso) => (iso ? dateTime.format(new Date(iso)) : '
 export const formatDateTimeSeconds = (iso) => (iso ? dateTimeSeconds.format(new Date(iso)) : '—');
 export const formatDateLong = (iso) => (iso ? dateLong.format(new Date(iso)) : '—');
 
-// Duração em ms → "3d 04:12:09" ou "04:12:09"
+// Duração em ms → "3d 04:12:09", "04:12:09" ou, abaixo de 1 hora, "01:42"
 export function formatDuration(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const days = Math.floor(total / 86400);
   const h = String(Math.floor((total % 86400) / 3600)).padStart(2, '0');
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
   const s = String(total % 60).padStart(2, '0');
-  return days > 0 ? `${days}d ${h}:${m}:${s}` : `${h}:${m}:${s}`;
+  if (days > 0) return `${days}d ${h}:${m}:${s}`;
+  return h === '00' ? `${m}:${s}` : `${h}:${m}:${s}`;
 }
 
 // Hash longo → "dff39e51…a3c2" (o completo vai no title)

@@ -3,7 +3,7 @@
 import { useServerNow } from '../hooks/useServerNow';
 import { formatDuration } from '../utils/format';
 
-const URGENT_MS = 2 * 60 * 1000; // últimos 2 min: mesma janela do anti-sniping
+const URGENT_MS = 60 * 1000;
 
 export function Countdown({ target, endedLabel = 'Encerrado', compact = false }) {
   const now = useServerNow(compact ? 1000 : 250);
