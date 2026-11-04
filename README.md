@@ -38,7 +38,7 @@ adulteração** dos lances. Extras: documentação Swagger, e-mails transacionai
 | Opcional: busca e filtro de lotes | Vitrine (`ShowcasePage.jsx`); `GET /lots?search=&minPrice=&maxPrice=` |
 | Opcional: cancelamento com estorno automático | `lot.service.cancelLot`; ver [Cancelamento com estorno](#cancelamento-com-estorno) |
 | Opcional: Docker Compose | `docker-compose.yml`; ver [Como rodar localmente](#como-rodar-localmente) |
-| Opcional: testes automatizados | `backend/tests/` (Jest + Supertest); ver [Testes](#testes) |
+| Opcional: testes automatizados | `backend/tests/` (Jest + Supertest) e `frontend/tests/` (Vitest + Testing Library); ver [Testes](#testes) |
 | Opcional: dark mode | `ThemeContext.jsx`, `styles/tokens.css` (toggle no cabeçalho) |
 
 ## Stack
@@ -46,7 +46,7 @@ adulteração** dos lances. Extras: documentação Swagger, e-mails transacionai
 | Camada | Tecnologias |
 |---|---|
 | Back-end | Node.js 22, Express 5, Prisma 5, PostgreSQL 16, JWT + bcrypt |
-| Testes | Jest + Supertest (banco de testes separado) |
+| Testes | Back: Jest + Supertest (banco de testes separado) · Front: Vitest + React Testing Library (API simulada) |
 | Front-end | React 19, Vite 7, React Router 7, CSS puro com variáveis (tema claro/escuro) |
 | Local | Docker Compose (Postgres + API + front) |
 
@@ -177,9 +177,11 @@ Observações:
 ## Testes
 
 ```bash
-cd backend
-npm test
+cd backend && npm test     # back-end (precisa do Postgres: docker-compose up -d postgres)
+cd frontend && npm test    # front-end (não precisa de banco nem da API)
 ```
+
+### Back-end (Jest + Supertest)
 
 Os testes usam um banco separado, `leiloes_test`, no mesmo container. Ele é recriado a cada execução,
 e há uma trava que impede rodar os testes contra um banco cujo nome não termine em `_test`.
@@ -201,6 +203,19 @@ O job de liquidação não roda nos testes: só o `server.js` o inicia, e os tes
   - assistente, com a API da Anthropic simulada.
 
 **Nenhum teste chama serviço pago.**
+
+### Front-end (Vitest + React Testing Library)
+
+Os testes renderizam as páginas com os mesmos providers do app (toasts, confirmação, sessão) e
+**simulam a API** com `vi.mock('../src/api/endpoints')`: todas as páginas falam com o back-end por
+esse módulo, então nenhuma requisição real sai do teste. `npm run test:watch` roda em modo observação.
+
+**9 testes** em 4 arquivos (`frontend/tests/`):
+- **Sala do lote:** lance aceito mostra "Você está ganhando"; lance recusado mostra a mensagem
+  exata da API (abaixo do mínimo e saldo insuficiente), no toast e embaixo do campo.
+- **Carteira:** total, comprometido e disponível formatados em R$ a partir dos centavos da API.
+- **ConfirmDialog:** confirma, cancela, fecha com Esc e devolve o foco ao botão de origem.
+- **PasswordInput:** o botão "olho" mostra e oculta a senha.
 
 ## Endpoints
 
@@ -531,6 +546,30 @@ npm run db:seed        # a trava impede rodar de novo com o banco populado
    e o link copiado abre numa aba anônima.
 9. O painel do leiloeiro soma os lotes #2 e #4 no total recebido; a busca no catálogo funciona.
 10. Trocar o token no DevTools e fazer uma ação leva ao login com o aviso de sessão expirada.
+
+## Decisões técnicas
+
+- **Dinheiro em centavos (inteiro)** em todo o back-end; só o front formata em R$. Evita erros de
+  arredondamento de ponto flutuante.
+- **Saldo comprometido calculado, não gravado:** soma dos lances em que o usuário lidera em lotes
+  ACTIVE. Como não existe coluna para atualizar, nunca dessincroniza, e ser superado libera o valor
+  sem nenhum "estorno".
+- **Índice `Lot(leaderId, status)`** para essa soma, que roda a cada lance e a cada abertura da
+  carteira. Medido com `EXPLAIN ANALYZE` em 100 mil lotes simulados: antes, o Postgres lia os ~10 mil
+  lotes ACTIVE e descartava os de outros líderes (3,7 ms); depois, vai direto nos lotes do usuário
+  pelo índice (0,1 ms). `leaderId` vem primeiro porque é o filtro mais seletivo. Os outros filtros
+  frequentes já tinham índice: `Bid(bidderId)`, `Bid(lotId, seq)` (único), `WalletTransaction(userId)`
+  e `Lot(status, endsAt)` (job de liquidação).
+- **Travas `SELECT ... FOR UPDATE`** dentro de `prisma.$transaction`, sempre na ordem lote → usuário
+  (e usuários por id na liquidação), contra condição de corrida e deadlock.
+- **Status exibido calculado** (agendado / ao vivo / encerrado) a partir de `startsAt`/`endsAt`: não
+  depende de job para "virar" o status.
+- **Liquidação idempotente** (job a cada 15 s + sob demanda), para o servidor dormir no Render sem
+  deixar lote vencido sem resultado.
+- **Snapshot da obra** no lote: depois de criado, nada depende da API do Art Institute.
+- **Polling de 2 s** na sala em vez de WebSocket: mais simples e sem conexão persistente.
+- **Comentários só explicam o porquê** (travas, idempotência, HMAC, anti-sniping, segurança); o
+  contrato da API fica no `openapi.yaml`.
 
 ## Limitações conhecidas
 

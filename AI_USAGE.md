@@ -285,6 +285,62 @@ Registro, por fase, do que foi gerado com auxílio de IA e do que foi revisado/a
 - Pedi depois de conferir o projeto contra os opcionais do PDF (o compose subia só o banco).
 - Teste local: rodei docker-compose up --build, abri o front em localhost:5173 e entrei com uma conta do seed.
 
+## Melhorias pós-feedback
+
+Ajustes feitos depois do feedback técnico da Verzel, uma etapa por commit, com os testes rodando ao
+fim de cada uma.
+
+### Etapa 1 — Índice no banco
+
+**Feedback recebido:** "Lot.leaderId não possui índice. Como o saldo comprometido depende de filtros
+nesse campo, as consultas percorrem toda a tabela."
+
+**Gerado com IA:**
+- `@@index([leaderId, status])` no model `Lot` e a migration `lot_leader_index`.
+- Medição com `EXPLAIN ANALYZE` no banco local, com 100 mil lotes e 2 mil usuários falsos inseridos
+  numa transação desfeita com `ROLLBACK` no fim (o banco local não foi alterado). Antes: o Postgres
+  usava o índice `(status, endsAt)`, lia ~10 mil lotes ACTIVE e descartava 9.952 (3,7 ms). Depois:
+  `Bitmap Index Scan on "Lot_leaderId_status_idx"`, lendo só os 50 lotes do usuário (0,1 ms).
+- Revisão das outras consultas frequentes: `Bid(bidderId)` e `WalletTransaction(userId)` já tinham
+  índice; `Bid` por lote é coberto pelo `@@unique([lotId, seq])`. Sugestão opcional não aplicada:
+  `WalletTransaction(userId, createdAt)` para o extrato.
+
+**Revisado/ajustado por mim:** (a preencher)
+
+### Etapa 2 — Comentários
+
+**Feedback recebido:** "muitos comentários que apenas descrevem o óbvio."
+
+**Gerado com IA:**
+- Regra nova no `CLAUDE.md`: comentário explica o porquê, nunca o quê.
+- Limpeza em back-end e front-end (74 arquivos, 276 linhas removidas e 101 reescritas): saíram
+  comentários que repetiam o código, separadores de seção, comentários numerados das validações e
+  "assinaturas" de rota (o contrato está no `openapi.yaml`). Ficaram e foram melhorados os de travas e
+  ordem das travas, idempotência, HMAC/selo, anti-sniping, privacidade e segurança.
+- Verificação de que nenhuma lógica mudou: cada arquivo foi comparado antes/depois com os
+  comentários removidos (idênticos nos 73 arquivos de código) e os 122 testes do back-end passaram.
+
+**Revisado/ajustado por mim:** (a preencher)
+
+### Etapa 3 — Testes no front
+
+**Feedback recebido:** "o front não possui testes. Cobrir fluxos críticos, como envio de lances e
+exibição do saldo na carteira."
+
+**Gerado com IA:**
+- Vitest + React Testing Library + jsdom no `frontend/` (`npm test` e `npm run test:watch`),
+  configurados no `vite.config.js`.
+- API simulada com `vi.mock` no módulo `api/endpoints` (nenhuma chamada ao back-end real) e um helper
+  que monta os mesmos providers do `main.jsx`.
+- 9 testes: sala do lote (lance aceito → "Você está ganhando"; recusas "abaixo do mínimo" e "saldo
+  insuficiente" com a mensagem exata da API), carteira (total, comprometido e disponível em R$),
+  `ConfirmDialog` (confirma, cancela, Esc, foco devolvido) e `PasswordInput` (mostrar/ocultar).
+- Prova de que os testes pegam regressão: trocando a mensagem da API por um texto genérico na sala,
+  os dois testes de recusa falharam (mudança desfeita em seguida).
+- README: seção de testes do front e nova seção "Decisões técnicas" (incluindo o índice).
+
+**Revisado/ajustado por mim:** (a preencher)
+
 ## Funcionalidade iniciada e descartada
 
 Comecei a implementar "Esqueci minha senha", mas parei ao reler o PDF: recuperação de senha está em "Não precisa fazer". Desfiz tudo antes de qualquer commit (`git restore` e remoção dos arquivos novos), regenerei o Prisma Client (os testes quebraram porque ele ainda refletia o schema da tarefa cancelada) e removi do banco local a migration que já tinha sido aplicada. Os testes voltaram a passar e nada chegou à produção.
