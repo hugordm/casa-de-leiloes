@@ -5,7 +5,7 @@
 .hero h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); }
 .hero__lead { color: var(--text-muted); font-size: 1.05rem; max-width: 600px; }
 
-.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; overflow-x: auto; }
+.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
 .tabs__tab {
   font: inherit;
   font-family: var(--font-serif);
@@ -433,6 +433,11 @@
 }
 @media (max-width: 560px) {
   .main { padding-top: 1.25rem; }
+  /* Só aqui as abas podem não caber: rolam na horizontal. overflow-x: auto faria o eixo vertical
+     virar "auto" também, então o vertical fica travado e a margem negativa (que desce o sublinhado
+     da aba ativa sobre o fio) sai, para não sobrar 1px de rolagem vertical. */
+  .tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .tabs__tab { margin-bottom: 0; margin-right: 1.25rem; font-size: 1.1rem; }
   .hero { padding-top: 0.5rem; }
   .room__price,
   .room__time { font-size: 1.9rem; }
