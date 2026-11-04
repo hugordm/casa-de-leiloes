@@ -302,8 +302,12 @@ nesse campo, as consultas percorrem toda a tabela."
   usava o índice `(status, endsAt)`, lia ~10 mil lotes ACTIVE e descartava 9.952 (3,7 ms). Depois:
   `Bitmap Index Scan on "Lot_leaderId_status_idx"`, lendo só os 50 lotes do usuário (0,1 ms).
 - Revisão das outras consultas frequentes: `Bid(bidderId)` e `WalletTransaction(userId)` já tinham
-  índice; `Bid` por lote é coberto pelo `@@unique([lotId, seq])`. Sugestão opcional não aplicada:
-  `WalletTransaction(userId, createdAt)` para o extrato.
+  índice; `Bid` por lote é coberto pelo `@@unique([lotId, seq])`. Sugestão: `WalletTransaction(userId, createdAt)`
+  para o extrato.
+- Depois da minha aprovação, em commit separado: `@@index([userId, createdAt])` substituindo o
+  `@@index([userId])` (migration `wallet_tx_user_created_index`). EXPLAIN com 200 mil lançamentos:
+  antes, Bitmap Scan em ~1.000 linhas do usuário + Sort (0,87 ms); depois, `Index Scan Backward`
+  lendo só 50 linhas (0,05 ms). A soma de CREDIT do painel continua usando o índice.
 
 **Revisado/ajustado por mim:** (a preencher)
 

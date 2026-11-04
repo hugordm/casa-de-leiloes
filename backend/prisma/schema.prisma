@@ -150,5 +150,7 @@ model WalletTransaction {
   user User @relation(fields: [userId], references: [id])
   lot  Lot? @relation(fields: [lotId], references: [id])
 
-  @@index([userId])
+  // Extrato: "WHERE userId ORDER BY createdAt DESC LIMIT 50" sai já ordenado do índice.
+  // Também atende as buscas só por userId (é a 1ª coluna), por isso substitui o índice de userId.
+  @@index([userId, createdAt])
 }

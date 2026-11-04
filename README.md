@@ -558,8 +558,12 @@ npm run db:seed        # a trava impede rodar de novo com o banco populado
   carteira. Medido com `EXPLAIN ANALYZE` em 100 mil lotes simulados: antes, o Postgres lia os ~10 mil
   lotes ACTIVE e descartava os de outros líderes (3,7 ms); depois, vai direto nos lotes do usuário
   pelo índice (0,1 ms). `leaderId` vem primeiro porque é o filtro mais seletivo. Os outros filtros
-  frequentes já tinham índice: `Bid(bidderId)`, `Bid(lotId, seq)` (único), `WalletTransaction(userId)`
-  e `Lot(status, endsAt)` (job de liquidação).
+  frequentes já tinham índice: `Bid(bidderId)`, `Bid(lotId, seq)` (único) e `Lot(status, endsAt)`
+  (job de liquidação).
+- **Índice `WalletTransaction(userId, createdAt)`** para o extrato (`WHERE userId ORDER BY createdAt
+  DESC LIMIT 50`): em 200 mil lançamentos simulados, o banco deixou de ler e ordenar os ~1.000
+  lançamentos do usuário (0,87 ms) e passou a ler só os 50 mais recentes direto do índice, já em
+  ordem (0,05 ms). Ele substituiu o antigo índice só de `userId`, que ficaria redundante.
 - **Travas `SELECT ... FOR UPDATE`** dentro de `prisma.$transaction`, sempre na ordem lote → usuário
   (e usuários por id na liquidação), contra condição de corrida e deadlock.
 - **Status exibido calculado** (agendado / ao vivo / encerrado) a partir de `startsAt`/`endsAt`: não
