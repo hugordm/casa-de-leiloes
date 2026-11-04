@@ -345,6 +345,30 @@ exibição do saldo na carteira."
 
 **Revisado/ajustado por mim:** (a preencher)
 
+### Etapa 4 — Identidade visual (branch `visual`)
+
+**Feedback recebido:** "a interface apresenta características comuns a telas geradas por IA. Faltou
+refinamento manual. Um benchmark de sites de leilão e marketplaces poderia ajudar na escolha de
+paleta, tipografia e componentes, especialmente nas telas de lances, contagem regressiva e carteira."
+
+**Gerado com IA:**
+- Benchmark (Catawiki, Sotheby's, Christie's, Superbid) e 3 direções visuais numa página de prévia;
+  a escolha foi minha: Direção A (catálogo de casa de leilões) com o registro mono da Direção C no
+  histórico de lances e na auditoria.
+- Implementação numa branch separada, um commit por tela: fundação (tokens, Libre Caslon Text +
+  IBM Plex Sans/Mono no lugar de Cormorant + Inter, um vermelho de destaque só para lance e urgência,
+  seções com fios no lugar de cartões com sombra), vitrine em lista de catálogo, sala (cronômetro em
+  texto que muda de cor no último minuto, próximo lance mínimo, tabela de incrementos, registro de
+  lances com hash), carteira em livro-caixa (barra comprometido/disponível, extrato com saldo),
+  auditoria em registro mono com selo de carimbo e ajustes nas demais telas.
+- Sem mudança de regra de negócio nem da API. O hash no registro da sala vem da rota pública
+  `GET /audit/:id`, buscada só quando o número de lances muda; por isso o teste da sala ganhou
+  `publicApi.audit` no mock. Os 9 testes do front e os 122 do back passam.
+- Prints de vitrine, sala, carteira e auditoria (claro/escuro, desktop/celular) tirados com o Chrome
+  headless contra um banco de prévia separado (`leiloes_preview`), sem tocar no banco local.
+
+**Revisado/ajustado por mim:** (a preencher)
+
 ## Funcionalidade iniciada e descartada
 
 Comecei a implementar "Esqueci minha senha", mas parei ao reler o PDF: recuperação de senha está em "Não precisa fazer". Desfiz tudo antes de qualquer commit (`git restore` e remoção dos arquivos novos), regenerei o Prisma Client (os testes quebraram porque ele ainda refletia o schema da tarefa cancelada) e removi do banco local a migration que já tinha sido aplicada. Os testes voltaram a passar e nada chegou à produção.
