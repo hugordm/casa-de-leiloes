@@ -1,4 +1,3 @@
-// Regras de lotes: criação (com snapshot da obra), cancelamento, listagem, detalhe e painel do leiloeiro.
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const catalogService = require('./catalog.service');
@@ -12,7 +11,7 @@ const { isCents, parseDate, parseId } = require('../utils/validation');
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-const MAX_PRICE_CENTS = 100_000_000; // R$ 1.000.000,00 — teto para valores de lote
+const MAX_PRICE_CENTS = 100_000_000; // R$ 1.000.000,00
 const MIN_DURATION_MS = 5 * MINUTE;
 const MAX_DURATION_MS = 30 * DAY;
 const START_TOLERANCE_MS = MINUTE; // aceita startsAt até 1 min no passado (relógio/latência)
@@ -26,14 +25,14 @@ function validationError(message) {
   return new AppError(400, 'VALIDATION_ERROR', message);
 }
 
-// Formato público do lote. Não expõe leaderId/winnerId (privacidade dos licitantes).
+// Não expõe leaderId/winnerId: a identidade dos licitantes nunca sai da API.
 function serializeLot(lot, now = new Date()) {
   return {
     id: lot.id,
     externalId: lot.externalId,
     title: lot.title,
     artist: lot.artist,
-    imageUrl: toPublicImageUrl(lot.imageUrl), // via proxy da API (ver image.service)
+    imageUrl: toPublicImageUrl(lot.imageUrl),
     attributes: lot.attributes,
     startingBidCents: lot.startingBidCents,
     minIncrementCents: lot.minIncrementCents,
@@ -52,7 +51,6 @@ function serializeLot(lot, now = new Date()) {
 
 const includeAuctioneer = { auctioneer: { select: { id: true, name: true } } };
 
-// ---------- Criação ----------
 
 async function createLot(auctioneerId, body = {}) {
   const { externalId, startingBidCents, minIncrementCents } = body;
@@ -68,7 +66,6 @@ async function createLot(auctioneerId, body = {}) {
     throw validationError('Incremento mínimo inválido (em centavos, entre 1 e 100000000)');
   }
 
-  // startsAt é opcional: se não vier, o lote começa agora.
   const startsAt = body.startsAt == null ? now : parseDate(body.startsAt);
   const endsAt = parseDate(body.endsAt);
   if (!startsAt) throw validationError('Data de início inválida');
@@ -104,9 +101,8 @@ async function createLot(auctioneerId, body = {}) {
         endsAt,
       },
     });
-    // Selo inicial (0 lances). Sem ele, quem apagasse TODOS os lances e zerasse
-    // o lote no banco deixaria a auditoria sem como perceber.
-    // (O selo depende do id, por isso é gravado logo após criar, na mesma transação.)
+    // Selo inicial (0 lances): sem ele, apagar TODOS os lances e zerar o lote passaria
+    // despercebido. Depende do id, por isso é um update logo após o create.
     return tx.lot.update({
       where: { id: created.id },
       data: { seal: hashChain.computeSeal({ lotId: created.id, bidCount: 0, lastHash: null }) },
@@ -117,7 +113,6 @@ async function createLot(auctioneerId, body = {}) {
   return serializeLot(lot);
 }
 
-// ---------- Cancelamento ----------
 
 // O leiloeiro dono pode cancelar um lote agendado ou ao vivo, MESMO com lances (estorno automático):
 // - o lote vira CANCELLED. Como o "comprometido" só soma lotes ACTIVE, o valor que estava
@@ -169,9 +164,7 @@ async function cancelLot(lotId, auctioneerId) {
   return result.lot;
 }
 
-// ---------- Listagem (vitrine) ----------
 
-// Lê um filtro de preço (em centavos) da query string. undefined = filtro não usado.
 function parsePriceFilter(value, label) {
   if (value === undefined || value === '') return undefined;
   const n = Number(value);
@@ -183,26 +176,25 @@ function parsePriceFilter(value, label) {
 
 async function listLots(query = {}) {
   const now = new Date();
-  // Cancelados nunca aparecem na vitrine.
   const and = [{ status: { not: 'CANCELLED' } }];
   let orderBy = { endsAt: 'asc' };
 
-  // Status exibido → condições de data (mesma regra de getDisplayStatus)
+  // Precisa ficar igual à regra de getDisplayStatus (utils/lot.js), só que em SQL.
   switch (query.status) {
     case undefined:
     case '':
       break;
     case 'live':
       and.push({ startsAt: { lte: now } }, { endsAt: { gt: now } });
-      orderBy = { endsAt: 'asc' }; // terminando antes primeiro
+      orderBy = { endsAt: 'asc' };
       break;
     case 'scheduled':
       and.push({ startsAt: { gt: now } });
-      orderBy = { startsAt: 'asc' }; // começando antes primeiro
+      orderBy = { startsAt: 'asc' };
       break;
     case 'ended':
       and.push({ endsAt: { lte: now } });
-      orderBy = { endsAt: 'desc' }; // encerrado mais recente primeiro
+      orderBy = { endsAt: 'desc' };
       break;
     default:
       throw validationError('Filtro de status inválido (use live, scheduled ou ended)');
@@ -247,11 +239,9 @@ async function listLots(query = {}) {
   return lots.map((lot) => serializeLot(lot, now));
 }
 
-// ---------- Detalhe (sala) ----------
 
 const RECENT_BIDS = 10;
 
-// Situação do licitante logado na sala: está ganhando? qual o maior lance dele? em que posição?
 // Posição = ranking dos licitantes pelo maior lance de cada um (1 = líder).
 async function getViewerSituation(lot, userId) {
   const ranking = await prisma.bid.groupBy({
@@ -261,9 +251,8 @@ async function getViewerSituation(lot, userId) {
     orderBy: { _max: { amountCents: 'desc' } },
   });
   const index = ranking.findIndex((r) => r.bidderId === userId);
-  if (index === -1) return { status: 'none' }; // ainda não deu lance neste lote
+  if (index === -1) return { status: 'none' };
 
-  // Liquidado: ganhou ou perdeu. Antes disso: está ganhando ou foi superado.
   let status;
   if (lot.status === 'SETTLED') status = lot.winnerId === userId ? 'won' : 'lost';
   else status = lot.leaderId === userId ? 'leading' : 'outbid';
@@ -280,7 +269,7 @@ async function getViewerSituation(lot, userId) {
   };
 }
 
-// viewer = req.user (opcional). Visitante vê tudo, menos o bloco "me".
+// Visitante (sem viewer) vê tudo, menos o bloco "me".
 async function getLot(lotId, viewer) {
   // Liquidação sob demanda: se o lote já venceu e o job ainda não passou
   // (ex.: servidor estava dormindo), liquida agora antes de responder.
@@ -314,9 +303,7 @@ async function getLot(lotId, viewer) {
   return result;
 }
 
-// ---------- Painel do leiloeiro (GET /me/lots) ----------
 
-// Resultado de um lote do ponto de vista do leiloeiro.
 function getAuctioneerResult(lot, now) {
   if (lot.status === 'CANCELLED') return 'cancelled';
   if (lot.status === 'SETTLED') return lot.winnerId ? 'sold' : 'unsold';
@@ -325,7 +312,7 @@ function getAuctioneerResult(lot, now) {
 }
 
 async function listMyLots(auctioneerId) {
-  // Garante que lotes vencidos deste leiloeiro já apareçam liquidados.
+  // Sob demanda: o total recebido já inclui lotes que venceram e o job ainda não pegou.
   await settlementService.settleDueLots({ auctioneerId });
 
   const lots = await prisma.lot.findMany({

@@ -1,7 +1,3 @@
-// Sessão do usuário: quem está logado, login/cadastro/logout.
-//
-// O token JWT fica no localStorage (via api/client.js) e vai em toda requisição.
-// Ao abrir o site, se houver token salvo, validamos com GET /auth/me.
 // Se qualquer chamada da API responder 401 (token expirado/inválido), o client.js
 // avisa aqui: limpamos a sessão e mandamos para o login com um aviso.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -23,7 +19,6 @@ export function AuthProvider({ children }) {
   const location = useLocation();
   const toast = useToast();
 
-  // Abertura do site: valida o token salvo.
   useEffect(() => {
     if (!getToken()) return;
     authApi

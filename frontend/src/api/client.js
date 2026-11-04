@@ -1,16 +1,10 @@
-// Cliente HTTP central: TODA chamada à API passa por aqui.
-// Responsabilidades:
-//   - montar a URL com VITE_API_URL;
-//   - enviar o token JWT no cabeçalho Authorization;
-//   - converter JSON e transformar erros da API em ApiError (com a mensagem em português);
-//   - avisar o AuthContext quando a API responder 401 (sessão expirada);
-//   - atualizar o relógio do servidor quando a resposta trouxer serverTime.
+// TODA chamada à API passa por aqui: token, ApiError com a mensagem em português,
+// aviso de sessão expirada (401) e relógio do servidor ficam num lugar só.
 import { updateServerOffset } from '../utils/serverClock';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/$/, '');
 const TOKEN_KEY = 'leiloes.token';
 
-// Endereço completo de um caminho da API (ex.: imagens servidas pelo proxy "/images/...").
 export const apiUrl = (path) => `${API_URL}${path}`;
 
 export class ApiError extends Error {
@@ -21,7 +15,7 @@ export class ApiError extends Error {
   }
 }
 
-// ---- Token (guardado no localStorage para sobreviver a um F5) ----
+// Token no localStorage para sobreviver a um F5.
 export function getToken() {
   try {
     return localStorage.getItem(TOKEN_KEY);
@@ -39,14 +33,13 @@ export function setToken(token) {
   }
 }
 
-// ---- 401: o AuthContext registra aqui o que fazer (sair e ir para o login) ----
+// O AuthContext registra aqui o que fazer num 401 (sair e ir para o login).
 let onUnauthorized = null;
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
 }
 
-// options: { method, body, signal, silent401 }
-//   silent401 → não dispara o "sessão expirada" (usado ao validar o token na abertura do site)
+// silent401: não dispara o "sessão expirada" (usado ao validar o token na abertura do site).
 export async function request(path, { method = 'GET', body, signal, silent401 = false } = {}) {
   const token = getToken();
   const headers = { Accept: 'application/json' };

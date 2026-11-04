@@ -1,4 +1,3 @@
-// Estados de página padronizados: carregando, erro e vazio.
 import { Icon } from './Icon';
 
 export function Loading({ label = 'Carregando…' }) {

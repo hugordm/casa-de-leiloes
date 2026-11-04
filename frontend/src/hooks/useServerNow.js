@@ -1,4 +1,3 @@
-// Re-renderiza o componente a cada `tickMs` com a hora atual DO SERVIDOR.
 import { useEffect, useState } from 'react';
 import { serverNow } from '../utils/serverClock';
 

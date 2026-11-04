@@ -1,5 +1,3 @@
-// Tema claro/escuro. As cores ficam em variáveis CSS (styles/tokens.css);
-// aqui só trocamos o atributo data-theme do <html> e salvamos a escolha.
 // O tema inicial já foi aplicado por um script no index.html (evita "piscar").
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -17,7 +15,7 @@ export function ThemeProvider({ children }) {
     setTheme((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
       try {
-        localStorage.setItem(STORAGE_KEY, next); // a escolha manual passa a valer nas próximas visitas
+        localStorage.setItem(STORAGE_KEY, next); // a partir daqui, ignora o tema do sistema
       } catch {
         // sem localStorage: vale só até fechar a aba
       }

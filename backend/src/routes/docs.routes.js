@@ -1,6 +1,3 @@
-// Documentação interativa da API (Swagger UI) a partir de docs/openapi.yaml.
-//   GET /docs              → interface do Swagger
-//   GET /docs/openapi.json → o documento OpenAPI em JSON
 const fs = require('fs');
 const path = require('path');
 const { Router } = require('express');
@@ -18,7 +15,7 @@ router.use(
   swaggerUi.serve,
   swaggerUi.setup(spec, {
     customSiteTitle: 'Casa de Leilões — API',
-    swaggerOptions: { persistAuthorization: true }, // mantém o token após recarregar a página
+    swaggerOptions: { persistAuthorization: true },
   })
 );
 

@@ -1,4 +1,3 @@
-// Assistente flutuante: botão no canto que abre um painel de chat com a IA.
 // - A conversa fica só na memória da página (some ao recarregar).
 // - As respostas são exibidas como TEXTO PURO: o React escapa o conteúdo e o CSS mantém as
 //   quebras de linha. Nada de HTML/markdown vindo da IA é interpretado.
@@ -36,7 +35,6 @@ export function AssistantWidget() {
 
   const hasAsked = messages.some((m) => m.role === 'user');
 
-  // Foco no campo ao abrir; rola até a última mensagem quando chega uma nova.
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
@@ -75,7 +73,6 @@ export function AssistantWidget() {
   }
 
   function handleKeyDown(event) {
-    // Enter envia; Shift+Enter quebra a linha.
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       send(draft);

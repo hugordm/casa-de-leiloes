@@ -1,6 +1,5 @@
-// Erro de regra de negócio, previsto pela aplicação (ex.: "Saldo insuficiente").
-// Quem lança informa o status HTTP, um código estável (útil para o front e testes)
-// e a mensagem em português que será exibida ao usuário.
+// Erro de negócio previsto (ex.: "Saldo insuficiente"). `code` é estável para o front e os
+// testes; `message` é o texto em português exibido ao usuário.
 class AppError extends Error {
   constructor(statusCode, code, message) {
     super(message);

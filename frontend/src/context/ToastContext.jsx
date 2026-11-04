@@ -1,5 +1,3 @@
-// Toasts: mensagens de sucesso/erro no canto da tela que somem sozinhas.
-// Uso: const toast = useToast(); toast.success('Lance registrado'); toast.error(err.message);
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 
@@ -18,7 +16,7 @@ export function ToastProvider({ children }) {
   const show = useCallback(
     (type, message) => {
       const id = nextId.current++;
-      setToasts((list) => [...list.slice(-3), { id, type, message }]); // no máximo 4 na tela
+      setToasts((list) => [...list.slice(-3), { id, type, message }]);
       setTimeout(() => dismiss(id), DURATION[type]);
     },
     [dismiss]

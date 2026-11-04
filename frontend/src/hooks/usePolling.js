@@ -1,6 +1,5 @@
-// Executa `fn` agora e depois a cada `intervalMs`, mas SÓ enquanto:
-//   - o componente está montado (saiu da página → para);
-//   - a aba está visível (aba em segundo plano → pausa; ao voltar → busca na hora).
+// Pausa com a aba em segundo plano (ninguém está vendo a sala; poupa requisições)
+// e busca na hora ao voltar, para a tela não mostrar dado velho.
 //
 // Usa setTimeout encadeado (e não setInterval): a próxima chamada só é agendada
 // depois que a anterior terminou, então nunca há duas requisições ao mesmo tempo.
@@ -40,8 +39,8 @@ export function usePolling(fn, intervalMs, enabled = true) {
     }
 
     function onVisibilityChange() {
-      if (document.hidden) clearTimeout(timer); // pausa
-      else run(); // voltou para a aba: atualiza imediatamente
+      if (document.hidden) clearTimeout(timer);
+      else run();
     }
 
     run();

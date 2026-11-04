@@ -1,4 +1,3 @@
-// GET /audit/:lotId — verificação pública da corrente de lances de um lote.
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const { verifyChain } = require('./hashChain.service');

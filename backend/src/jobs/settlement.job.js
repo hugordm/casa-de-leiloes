@@ -1,6 +1,4 @@
-// Job de liquidação: a cada ~15s procura lotes vencidos e liquida.
-// Na mesma rodada, envia ao leiloeiro os resumos de lances vencidos (no máximo 1 a cada 15 min por lote).
-// Iniciado SOMENTE pelo server.js — os testes importam o app.js e, por isso, nunca o disparam.
+// Iniciado SOMENTE pelo server.js: os testes importam o app.js e, por isso, nunca o disparam.
 const settlementService = require('../services/settlement.service');
 const notifications = require('../services/email/notification.service');
 
@@ -27,8 +25,8 @@ function startSettlementJob({ intervalMs = DEFAULT_INTERVAL_MS } = {}) {
     }
   }
 
-  // Resumos de lances para o leiloeiro. Trava própria, separada da liquidação: um erro ou
-  // lentidão nos e-mails não atrapalha liquidar (e vice-versa).
+  // Trava própria, separada da liquidação: lentidão ou erro nos e-mails não atrapalha
+  // liquidar (e vice-versa).
   async function sendDigests() {
     if (digestRunning) return;
     digestRunning = true;

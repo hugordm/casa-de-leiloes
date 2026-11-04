@@ -1,7 +1,4 @@
-// Permite pedir confirmação de qualquer página com uma linha:
-//   const confirm = useConfirm();
-//   if (await confirm({ title, message, confirmLabel, destructive: true })) { ...faz a ação... }
-// Existe UM <ConfirmDialog> na aplicação, controlado por este provider.
+// Existe UM <ConfirmDialog> na aplicação; as páginas só fazem `await confirm({...})`.
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 

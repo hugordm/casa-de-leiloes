@@ -1,4 +1,3 @@
-// "/meus-arremates" (licitante) — obras arrematadas (com comprovante) e participações.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { meApi } from '../api/endpoints';

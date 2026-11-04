@@ -1,4 +1,3 @@
-// "/carteira" (licitante) — total, comprometido, disponível, depósito e extrato.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { walletApi } from '../api/endpoints';

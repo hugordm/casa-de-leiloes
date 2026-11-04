@@ -5,7 +5,11 @@ Projeto de teste técnico. O autor (Hugo) precisa ENTENDER e conseguir EXPLICAR 
 Por isso, ao trabalhar neste projeto:
 - Trabalhe UMA fase por vez (ver "Fases"). Não avance sem o Hugo pedir.
 - Ao terminar cada tarefa, explique em português, de forma simples: o que foi criado, por quê, e como se conecta ao resto.
-- Prefira código simples e legível a soluções "espertas". Comente em português as partes de regra de negócio.
+- Prefira código simples e legível a soluções "espertas".
+- Comentários (em português) explicam o PORQUÊ, nunca o quê: travas e ordem das travas, idempotência,
+  HMAC/segredo fora do banco, anti-sniping, privacidade, decisões de segurança e escolhas não óbvias.
+  Não escreva comentário que só repete o código, separador de seção ou "assinatura" de rota
+  (o contrato da API fica no `openapi.yaml`).
 - Ao final de cada fase, registre em `AI_USAGE.md` o que foi gerado com IA nessa fase (o Hugo completa com o que revisou/ajustou).
 
 ## Stack

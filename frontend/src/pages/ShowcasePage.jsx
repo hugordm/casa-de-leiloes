@@ -1,4 +1,3 @@
-// "/" — Vitrine: abas (ao vivo / agendados / encerrados), busca e filtro de preço.
 // Os filtros ficam na URL (?status=live&search=...) para o link poder ser compartilhado.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';

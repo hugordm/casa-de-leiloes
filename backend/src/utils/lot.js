@@ -1,10 +1,6 @@
-// Regras de cálculo sobre um lote, reaproveitadas por listagem, lances e liquidação.
 
-// Status EXIBIDO do lote — calculado na hora, nunca gravado no banco.
-//   CANCELLED            → 'cancelled'
-//   agora <  startsAt    → 'scheduled' (agendado)
-//   startsAt <= agora < endsAt → 'live' (ao vivo)
-//   agora >= endsAt      → 'ended' (encerrado; inclui SETTLED)
+// Calculado na hora, nunca gravado: assim não existe job para "virar" o status
+// e ele nunca fica desatualizado.
 function getDisplayStatus(lot, now = new Date()) {
   if (lot.status === 'CANCELLED') return 'cancelled';
   if (now < lot.startsAt) return 'scheduled';
@@ -12,8 +8,6 @@ function getDisplayStatus(lot, now = new Date()) {
   return 'ended';
 }
 
-// Menor lance aceito agora:
-//   sem lances → o lance inicial;  com lances → lance atual + incremento mínimo.
 function getMinNextBidCents(lot) {
   if (lot.bidCount === 0 || lot.currentBidCents == null) return lot.startingBidCents;
   return lot.currentBidCents + lot.minIncrementCents;

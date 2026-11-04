@@ -1,4 +1,3 @@
-// Ponto de entrada: sobe o servidor HTTP e o job de liquidação.
 const app = require('./app');
 const env = require('./config/env');
 const { startSettlementJob } = require('./jobs/settlement.job');

@@ -1,4 +1,3 @@
-// Rótulos e helpers de lote usados em várias páginas.
 
 export const STATUS_LABEL = {
   live: 'Ao vivo',
@@ -16,7 +15,6 @@ export function displayStatusAt(lot, now) {
   return 'ended';
 }
 
-// Preço "da vitrine": lance atual ou, sem lances, o inicial.
 export const currentPrice = (lot) => lot.currentBidCents ?? lot.startingBidCents;
 
 // Número do lote no estilo catálogo: 7 → "Lote 007"

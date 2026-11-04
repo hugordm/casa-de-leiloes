@@ -15,32 +15,28 @@ function lotIdFrom(req) {
   return id;
 }
 
-// GET /lots?status=live|scheduled|ended&search=&minPrice=&maxPrice=  (público)
 router.get('/', async (req, res) => {
   const lots = await lotService.listLots(req.query);
   // serverTime: o front usa a hora do SERVIDOR nos cronômetros (não a do computador do usuário).
   res.json({ lots, serverTime: new Date().toISOString() });
 });
 
-// GET /lots/:id  (público; se for um licitante logado, inclui "me" com a situação dele)
 router.get('/:id', optionalAuth, async (req, res) => {
   const lot = await lotService.getLot(lotIdFrom(req), req.user);
   res.json({ lot, serverTime: new Date().toISOString() });
 });
 
-// POST /lots  (AUCTIONEER)  { externalId, startingBidCents, minIncrementCents, startsAt?, endsAt }
 router.post('/', auth, requireRole('AUCTIONEER'), async (req, res) => {
   const lot = await lotService.createLot(req.user.id, req.body);
   res.status(201).json({ lot });
 });
 
-// POST /lots/:id/cancel  (AUCTIONEER dono do lote — o "dono" é checado no service)
+// Aqui só o papel; ser o DONO do lote é checado no service, dentro da transação.
 router.post('/:id/cancel', auth, requireRole('AUCTIONEER'), async (req, res) => {
   const lot = await lotService.cancelLot(lotIdFrom(req), req.user.id);
   res.json({ lot });
 });
 
-// POST /lots/:id/bids  (BIDDER)  { amountCents }  → 201 { bid, extended, lot }
 router.post('/:id/bids', auth, requireRole('BIDDER'), async (req, res) => {
   const result = await bidService.placeBid(lotIdFrom(req), req.user.id, req.body?.amountCents);
   res.status(201).json(result);

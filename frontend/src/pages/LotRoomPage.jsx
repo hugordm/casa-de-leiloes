@@ -1,8 +1,5 @@
-// "/lotes/:id" — Sala do lote.
-//   - Polling de 2 s em GET /lots/:id (só com a página aberta e a aba visível).
-//   - Cronômetro com a hora do servidor; acompanha o endsAt quando o anti-sniping estende.
-//   - Destaque "você está ganhando" / "você foi superado" e posição do usuário.
-//   - Lance com confirmação; erro de lance recusado mostra a mensagem exata da API.
+// Polling de 2 s em GET /lots/:id em vez de WebSocket: mais simples e não exige conexão
+// persistente com o servidor.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { lotsApi, walletApi } from '../api/endpoints';
@@ -42,7 +39,6 @@ export function LotRoomPage() {
   const previousLot = useRef(null);
   const requestSeq = useRef(0); // descarta respostas antigas que cheguem fora de ordem
 
-  // Compara o estado novo com o anterior para avisar mudanças importantes.
   const handleUpdate = useCallback(
     (next) => {
       const prev = previousLot.current;
@@ -95,7 +91,7 @@ export function LotRoomPage() {
     }
   }, []);
 
-  // Trocou de lote (navegação entre salas): zera o estado.
+  // Navegar de uma sala para outra reaproveita o componente: zera o estado do lote anterior.
   useEffect(() => {
     previousLot.current = null;
     setLot(null);
@@ -174,7 +170,7 @@ export function LotRoomPage() {
       previousLot.current = { ...result.lot, me: { status: 'leading' } };
       await Promise.all([loadLot(), loadWallet()]);
     } catch (err) {
-      // Mensagem EXATA da API (ex.: "Lance abaixo do mínimo (mínimo: R$ 1.250,00)")
+      // Mensagem EXATA da API: o back-end é quem sabe o mínimo e o saldo de verdade.
       toast.error(err.message);
       setBidError(err.message);
       loadLot(); // o motivo pode ser um lance novo de outra pessoa: atualiza a sala
@@ -365,7 +361,6 @@ export function LotRoomPage() {
   );
 }
 
-// Faixa de destaque com a situação do usuário logado neste lote.
 function MeBanner({ lot, me, status }) {
   if (lot.status === 'CANCELLED') {
     return (

@@ -1,4 +1,3 @@
-// Regras de autenticação: cadastro, login e "quem sou eu".
 // Não conhece Express (req/res): recebe dados, devolve dados ou lança AppError.
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -14,7 +13,7 @@ const BCRYPT_ROUNDS = 10;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 72;
 
-// O que o cliente pode ver de um usuário. NUNCA inclui passwordHash.
+// NUNCA inclui passwordHash.
 function toPublicUser(user) {
   return {
     id: user.id,

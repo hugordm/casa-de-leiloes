@@ -3,7 +3,6 @@ import { apiUrl } from '../api/client';
 import { AssistantWidget } from './AssistantWidget';
 import { Header } from './Header';
 
-// Moldura comum a todas as páginas: cabeçalho, conteúdo e rodapé.
 export function Layout() {
   return (
     <div className="app">

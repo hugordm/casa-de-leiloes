@@ -1,4 +1,3 @@
-// Regras de lance — a parte mais sensível do sistema.
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const walletService = require('./wallet.service');
@@ -11,11 +10,11 @@ const { isCents } = require('../utils/validation');
 const { formatBRL } = require('../utils/money');
 
 const MAX_BID_CENTS = 1_000_000_000;
-const ANTI_SNIPING_WINDOW_MS = 2 * 60 * 1000; // faltando menos de 2 min...
-const ANTI_SNIPING_EXTENSION_MS = 2 * 60 * 1000; // ...o leilão ganha +2 min
+const ANTI_SNIPING_WINDOW_MS = 2 * 60 * 1000;
+const ANTI_SNIPING_EXTENSION_MS = 2 * 60 * 1000;
 
 async function placeBid(lotId, userId, amountCents) {
-  // Formato do valor (antes das regras de negócio): inteiro em centavos.
+  // Fora da transação de propósito: valor malformado é recusado sem travar nenhuma linha.
   if (!isCents(amountCents, { min: 1, max: MAX_BID_CENTS })) {
     throw new AppError(400, 'INVALID_AMOUNT', 'Informe um valor de lance válido');
   }
@@ -31,15 +30,14 @@ async function placeBid(lotId, userId, amountCents) {
     const lot = lockedLot.length ? await tx.lot.findUnique({ where: { id: lotId } }) : null;
     const now = new Date();
 
-    // 1. Lote inexistente ou cancelado
+    // As validações seguem a ordem da especificação: quando várias falham,
+    // a primeira decide a mensagem que o usuário vê.
     if (!lot || lot.status === 'CANCELLED') {
       throw new AppError(404, 'LOT_NOT_FOUND', 'Lote não encontrado');
     }
-    // 2. Ainda não começou
     if (now < lot.startsAt) {
       throw new AppError(409, 'LOT_NOT_STARTED', 'Lote ainda não iniciado');
     }
-    // 3. Já terminou (ou já foi liquidado)
     if (now >= lot.endsAt || lot.status === 'SETTLED') {
       throw new AppError(409, 'LOT_ENDED', 'Lote encerrado');
     }
@@ -47,15 +45,13 @@ async function placeBid(lotId, userId, amountCents) {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
     const user = await tx.user.findUnique({ where: { id: userId } });
 
-    // 4. Só licitante dá lance (a rota já bloqueia; aqui é a segunda barreira)
+    // A rota já barra leiloeiros (requireRole); aqui é a segunda barreira.
     if (!user || user.role !== 'BIDDER') {
       throw new AppError(403, 'ROLE_CANNOT_BID', 'Leiloeiros não podem dar lances');
     }
-    // 5. Não pode cobrir o próprio lance
     if (lot.leaderId === userId) {
       throw new AppError(409, 'ALREADY_LEADING', 'Você já está ganhando');
     }
-    // 6. Valor mínimo: lance inicial (sem lances) ou lance atual + incremento
     const minCents = getMinNextBidCents(lot);
     if (amountCents < minCents) {
       throw new AppError(
@@ -64,15 +60,14 @@ async function placeBid(lotId, userId, amountCents) {
         `Lance abaixo do mínimo (mínimo: ${formatBRL(minCents)})`
       );
     }
-    // 7. Saldo disponível = total - comprometido em outros lotes que ele lidera.
-    // (Ele não lidera ESTE lote — regra 5 —, então este lote não entra na soma.)
+    // Este lote não entra no comprometido: a regra "Você já está ganhando" acima
+    // garante que o usuário não é o líder dele.
     const committedCents = await walletService.getCommittedCents(userId, tx);
     const availableCents = user.balanceCents - committedCents;
     if (amountCents > availableCents) {
       throw new AppError(400, 'INSUFFICIENT_BALANCE', 'Saldo insuficiente');
     }
 
-    // ---- Lance aceito ----
     const seq = lot.bidCount + 1;
     const bidderAlias = hashChain.bidderAlias(lotId, userId);
     const prevHash = lot.lastHash ?? hashChain.genesisHash(lotId);
@@ -120,7 +115,7 @@ async function placeBid(lotId, userId, amountCents) {
       },
       extended,
       lot: serializeLot(updatedLot, now),
-      previousLeaderId: lot.leaderId, // quem liderava antes deste lance (null no 1º lance)
+      previousLeaderId: lot.leaderId,
     };
   });
 
@@ -137,7 +132,6 @@ async function placeBid(lotId, userId, amountCents) {
   return response;
 }
 
-// GET /me/bids — lotes em que o licitante deu lance, com a situação dele em cada um.
 async function listMyBids(userId) {
   // Lotes vencidos que este usuário lidera são liquidados antes, para o arremate
   // (e o comprovante) aparecer mesmo que o job ainda não tenha passado.
@@ -152,7 +146,6 @@ async function listMyBids(userId) {
     },
   });
 
-  // Maior lance do usuário em cada lote
   const myMax = await prisma.bid.groupBy({
     by: ['lotId'],
     where: { bidderId: userId },
@@ -166,7 +159,6 @@ async function listMyBids(userId) {
     myBestBidCents: myMaxByLot.get(lot.id),
     isLeader: lot.leaderId === userId && lot.status === 'ACTIVE',
     won: lot.winnerId === userId,
-    // Código do comprovante só nos lotes que ESTE usuário venceu.
     receiptCode: lot.winnerId === userId ? lot.receipt?.code ?? null : null,
   }));
 }

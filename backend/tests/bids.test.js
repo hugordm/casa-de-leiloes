@@ -157,7 +157,7 @@ describe('regras de recusa', () => {
     const res = await bid(lot.id, auctioneer, 100000);
     expect(res.status).toBe(403);
 
-    // Direto no service: a regra 4 também barra (defesa em profundidade)
+    // Direto no service: a validação de papel do placeBid também barra (defesa em profundidade)
     await expect(bidService.placeBid(lot.id, auctioneer.id, 100000)).rejects.toMatchObject({
       statusCode: 403,
       message: 'Leiloeiros não podem dar lances',

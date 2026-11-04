@@ -1,4 +1,3 @@
-// Protege rotas no FRONT: sem login → manda para /login; papel errado → aviso.
 // Isto só esconde telas; quem bloqueia de verdade é o back-end (auth + requireRole).
 import { Link, Navigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';

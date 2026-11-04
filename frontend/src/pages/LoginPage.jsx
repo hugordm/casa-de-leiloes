@@ -1,4 +1,3 @@
-// "/login"
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +26,7 @@ export function LoginPage() {
     try {
       const loggedUser = await login(email, password);
       toast.success(`Bem-vindo(a), ${loggedUser.name.split(' ')[0]}!`);
-      navigate(from, { replace: true }); // volta para onde estava antes do login
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

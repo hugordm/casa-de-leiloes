@@ -1,5 +1,3 @@
-// Notificações por e-mail (Resend).
-//
 // Regras:
 //   - Só são disparadas DEPOIS do commit da transação (quem chama faz isso após o
 //     `await prisma.$transaction(...)`), então nunca avisam algo que foi desfeito.
@@ -39,7 +37,6 @@ async function sendEmail({ to, subject, html, text }) {
   return { sent: true, id: data?.id };
 }
 
-// ---------- Disparo em segundo plano ----------
 
 const pending = new Set();
 
@@ -57,7 +54,6 @@ async function waitForPendingEmails() {
   while (pending.size > 0) await Promise.allSettled([...pending]);
 }
 
-// ---------- Notificações ----------
 
 // Líder anterior foi coberto. Não revela quem cobriu.
 function notifyOutbid({ lotId, previousLeaderId }) {
@@ -186,7 +182,7 @@ async function sendDueBidDigests({ now = new Date() } = {}) {
   let sent = 0;
   for (const lot of lots) {
     const newBids = lot.bidCount - lot.auctioneerNotifiedBidCount;
-    if (newBids <= 0) continue; // nenhum lance novo desde o último aviso
+    if (newBids <= 0) continue;
     try {
       if (!(await claimBidNotification(lot, now))) continue;
       const email = templates.bidDigestEmail({

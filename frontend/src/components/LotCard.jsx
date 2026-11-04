@@ -1,4 +1,3 @@
-// Cartão de lote na vitrine, no estilo de catálogo de leilão.
 import { Link } from 'react-router';
 import { LotImage } from './LotImage';
 import { StatusBadge } from './StatusBadge';

@@ -1,5 +1,5 @@
-// "/painel/novo-lote" (leiloeiro) — busca a obra na API do Art Institute (via nosso back-end)
-// e cria o lote. Só o externalId da obra é enviado: o back-end copia título/imagem/artista.
+// Só o externalId da obra é enviado: o back-end busca e copia título/imagem/artista,
+// então o cliente não consegue criar um lote com dados falsos da obra.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { catalogApi, lotsApi } from '../api/endpoints';
@@ -22,14 +22,12 @@ export function NewLotPage() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  // Busca no catálogo
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [selected, setSelected] = useState(null);
 
-  // Formulário do lote
   const [startingBid, setStartingBid] = useState('1.000,00');
   const [increment, setIncrement] = useState('50,00');
   const [startNow, setStartNow] = useState(true);
@@ -58,7 +56,6 @@ export function NewLotPage() {
     }
   }
 
-  // Botões de duração: término = início + duração
   function applyDuration(ms) {
     const base = startNow ? Date.now() : new Date(startsAt).getTime();
     setEndsAt(toDateTimeLocal(new Date(base + ms)));
@@ -92,7 +89,7 @@ export function NewLotPage() {
       toast.success(`Lote "${lot.title}" criado.`);
       navigate(`/lotes/${lot.id}`);
     } catch (err) {
-      toast.error(err.message); // validação da API: datas, valores, obra inexistente...
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }

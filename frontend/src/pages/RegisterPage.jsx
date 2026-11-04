@@ -1,4 +1,3 @@
-// "/cadastro" — escolhe o perfil: licitante (dá lances) ou leiloeiro (cria lotes).
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +19,7 @@ export function RegisterPage() {
 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'BIDDER' });
   const [error, setError] = useState(null);
-  const [passwordMsg, setPasswordMsg] = useState(null); // aviso do campo senha, antes de enviar
+  const [passwordMsg, setPasswordMsg] = useState(null);
   const [loading, setLoading] = useState(false);
 
   if (user) return <Navigate to="/" replace />;

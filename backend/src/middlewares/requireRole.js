@@ -1,5 +1,4 @@
-// Autorização por papel. Uso: router.post('/lots', auth, requireRole('AUCTIONEER'), ...)
-// Deve vir DEPOIS do middleware auth (precisa de req.user).
+// Deve vir DEPOIS do auth (precisa de req.user).
 // O front também esconde botões por papel, mas é aqui que o bloqueio de verdade acontece.
 const AppError = require('../errors/AppError');
 

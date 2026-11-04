@@ -1,5 +1,3 @@
-// Assistente da Casa de Leilões: responde dúvidas sobre o site usando a API da Anthropic.
-//
 // Proteções (além do limite por IP, que fica na rota):
 //   - mensagem de até 500 caracteres;
 //   - só as últimas 6 mensagens do histórico vão para o modelo (custo previsível);
@@ -73,7 +71,6 @@ function toPlainText(text) {
     .trim();
 }
 
-// POST /assistant/chat { message, history? } → { reply }
 async function chat({ message, history } = {}) {
   const text = validateMessage(message);
   if (!env.ANTHROPIC_API_KEY) throw unavailable();

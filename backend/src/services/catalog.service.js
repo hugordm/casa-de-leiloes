@@ -1,4 +1,3 @@
-// Integração com a API do Art Institute of Chicago (gratuita, sem chave).
 // Só é usada para BUSCAR obras e para copiar os dados ao criar um lote.
 // Depois de criado, o lote nunca mais depende desta API.
 const env = require('../config/env');
@@ -17,8 +16,7 @@ function unavailable() {
   );
 }
 
-// Faz a chamada HTTP com timeout e trata todos os jeitos de dar errado.
-// Retorna { status, body } — quem chama decide o que fazer com 404 etc.
+// Devolve { status, body } em vez de lançar no 404: quem chama decide o que ele significa.
 async function requestJson(path) {
   let response;
   try {
@@ -42,7 +40,6 @@ async function requestJson(path) {
   return { status: response.status, body: await response.json() };
 }
 
-// Converte o formato da AIC para o formato do nosso sistema (o mesmo gravado no lote).
 function toArtwork(item) {
   return {
     externalId: item.id,

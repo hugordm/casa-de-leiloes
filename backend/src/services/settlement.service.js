@@ -17,10 +17,9 @@ const BATCH_SIZE = 50;
 // Código público do comprovante: aleatório e impossível de adivinhar
 // (diferente de um id sequencial, ninguém acha o comprovante dos outros chutando números).
 function generateReceiptCode() {
-  return crypto.randomBytes(12).toString('base64url'); // 16 caracteres [A-Za-z0-9_-]
+  return crypto.randomBytes(12).toString('base64url');
 }
 
-// Liquida UM lote, se ele estiver mesmo vencido. Retorna { settled, outcome, receiptCode? }.
 async function settleLot(lotId) {
   const result = await settleLotInTransaction(lotId);
   // Só depois do commit, e só quando ESTA chamada liquidou (idempotência: uma segunda
@@ -48,7 +47,6 @@ async function settleLotInTransaction(lotId) {
     // depois que o job decidiu que este lote estava vencido.
     if (now < lot.endsAt) return { settled: false, outcome: 'NOT_DUE' };
 
-    // Sem lances: encerra sem vencedor, nenhum dinheiro se move.
     if (!lot.leaderId) {
       await tx.lot.update({ where: { id: lotId }, data: { status: 'SETTLED' } });
       return { settled: true, outcome: 'UNSOLD' };
@@ -94,8 +92,7 @@ async function settleLotInTransaction(lotId) {
   });
 }
 
-// Liquida os lotes vencidos (ACTIVE com endsAt <= agora).
-// `extraWhere` permite restringir, ex.: { auctioneerId } ou { leaderId }.
+// `extraWhere` restringe a liquidação sob demanda a um usuário: { auctioneerId } ou { leaderId }.
 async function settleDueLots(extraWhere = {}) {
   const due = await prisma.lot.findMany({
     where: { status: 'ACTIVE', endsAt: { lte: new Date() }, ...extraWhere },
@@ -116,7 +113,6 @@ async function settleDueLots(extraWhere = {}) {
   return results;
 }
 
-// Liquidação sob demanda de um lote específico (usada em GET /lots/:id).
 async function settleIfDue(lotId) {
   const lot = await prisma.lot.findUnique({
     where: { id: lotId },

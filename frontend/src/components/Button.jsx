@@ -1,5 +1,4 @@
-// Botão com estado de carregamento: enquanto `loading`, fica desabilitado
-// (evita clique duplo, ex.: dois lances iguais) e mostra um spinner.
+// Desabilitado enquanto `loading`: evita clique duplo (ex.: dois lances iguais).
 export function Button({ loading = false, variant = 'primary', disabled, children, className = '', ...props }) {
   return (
     <button

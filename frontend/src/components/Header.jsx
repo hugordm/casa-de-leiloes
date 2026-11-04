@@ -1,5 +1,3 @@
-// Cabeçalho: marca, navegação por papel, alternância de tema e sessão.
-// No celular, a navegação vira um menu que abre pelo botão "hambúrguer".
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +15,6 @@ export function Header() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Fecha o menu do celular ao trocar de página.
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
   async function handleLogout() {

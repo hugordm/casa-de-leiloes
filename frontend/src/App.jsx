@@ -1,4 +1,3 @@
-// Todas as rotas do front. Rotas com <RequireRole> exigem login (e o papel indicado).
 import { Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
 import { RequireRole } from './components/RequireRole';

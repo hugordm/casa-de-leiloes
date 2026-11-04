@@ -1,6 +1,5 @@
-// "/auditoria/:id" — verificação pública da corrente de lances.
-// Mostra o selo (Íntegro / Adulterado no lance #N) e a corrente como blocos ligados:
-// o "prevHash" de cada bloco precisa ser igual ao "hash" do bloco anterior.
+// A corrente aparece como blocos ligados: o "prevHash" de cada bloco precisa ser igual
+// ao "hash" do bloco anterior, e é isso que o visitante consegue conferir a olho.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { publicApi } from '../api/endpoints';

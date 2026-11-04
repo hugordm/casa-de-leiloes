@@ -1,4 +1,3 @@
-// "/comprovante/:code" — comprovante público de arremate (sem nome/e-mail do vencedor).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { publicApi } from '../api/endpoints';

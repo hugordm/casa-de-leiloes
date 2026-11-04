@@ -1,10 +1,9 @@
-// Carteira simulada do licitante.
-//
 //   saldo total   = User.balanceCents (só muda com depósito e com a liquidação)
 //   comprometido  = soma dos lances em que o usuário é LÍDER em lotes ACTIVE
 //   disponível    = total - comprometido
 //
-// "Comprometido" NÃO é gravado: é calculado a cada consulta, então nunca dessincroniza.
+// "Comprometido" NÃO é gravado: é calculado a cada consulta, então nunca dessincroniza
+// (a consulta usa o índice Lot(leaderId, status)).
 // Quando alguém supera o lance, o usuário deixa de ser líder e o valor volta
 // sozinho para o disponível — não há nenhum "estorno" a fazer.
 const prisma = require('../lib/prisma');
@@ -15,7 +14,7 @@ const MAX_DEPOSIT_CENTS = 10_000_000; // R$ 100.000,00 por depósito
 const MAX_BALANCE_CENTS = 1_000_000_000; // R$ 10.000.000,00 de saldo total
 const STATEMENT_LIMIT = 50;
 
-// `db` pode ser o prisma normal ou o `tx` de uma transação (bid.service usa assim).
+// Aceita o `tx` para o bid.service calcular o saldo DENTRO da transação, com o usuário travado.
 async function getCommittedCents(userId, db = prisma) {
   const result = await db.lot.aggregate({
     _sum: { currentBidCents: true },

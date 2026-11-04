@@ -1,4 +1,3 @@
-// Funções de apoio para montar cenários nos testes.
 const request = require('supertest');
 const app = require('../src/app');
 const prisma = require('../src/lib/prisma');

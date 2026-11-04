@@ -1,7 +1,5 @@
-// Diálogo de confirmação acessível (substitui window.confirm).
-//   - Esc ou clique fora → cancela
-//   - foco preso dentro do modal enquanto aberto (Tab/Shift+Tab circulam só nos botões dele)
-//   - ao fechar, o foco volta para o elemento que abriu o modal
+// Substitui window.confirm. Acessibilidade: foco preso no modal enquanto aberto e
+// devolvido ao botão de origem ao fechar, para quem navega por teclado não se perder.
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -25,11 +23,9 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return undefined;
 
-    // Lembra quem tinha o foco (o botão que abriu) para devolver ao fechar.
     const previouslyFocused = document.activeElement;
     // Foco inicial no "Cancelar": a opção segura, caso a pessoa aperte Enter sem querer.
     cancelRef.current?.focus();
-    // Impede a página de fundo de rolar enquanto o modal está aberto.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -40,7 +36,6 @@ export function ConfirmDialog({
         return;
       }
       if (e.key !== 'Tab') return;
-      // Prende o foco: do último elemento volta ao primeiro (e vice-versa).
       const items = dialogRef.current.querySelectorAll(FOCUSABLE);
       const first = items[0];
       const last = items[items.length - 1];
@@ -60,7 +55,7 @@ export function ConfirmDialog({
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus?.(); // devolve o foco ao botão de origem
+      previouslyFocused?.focus?.();
     };
   }, [open, onCancel]);
 
@@ -69,7 +64,6 @@ export function ConfirmDialog({
   return createPortal(
     <div
       className="modal-backdrop"
-      // Clique fora (no fundo escuro) cancela; clique dentro do modal não.
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}

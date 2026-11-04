@@ -1,5 +1,4 @@
-// Formata centavos como "R$ 1.234,56".
-// Usado SÓ em mensagens de erro da API (ex.: "Lance abaixo do mínimo (mínimo: R$ 1.050,00)").
+// Usado SÓ em mensagens de erro da API ("Lance abaixo do mínimo (mínimo: R$ 1.050,00)").
 // Fora isso, a API sempre trafega centavos e quem formata é o front.
 function formatBRL(cents) {
   const reais = Math.floor(cents / 100);

@@ -1,4 +1,4 @@
-// Formatação para exibição. A API trabalha em centavos e UTC; aqui viramos R$ e fuso local.
+// A API trabalha em centavos e UTC; só aqui viram R$ e fuso local.
 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -18,7 +18,6 @@ export function parseBRL(text) {
   return Math.round(Number(clean) * 100);
 }
 
-// Centavos → texto editável "1.050,00" (para pré-preencher inputs)
 export function centsToInput(cents) {
   return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -44,7 +43,6 @@ export function formatDuration(ms) {
 // Hash longo → "dff39e51…a3c2" (o completo vai no title)
 export const shortHash = (hash) => (hash && hash.length > 16 ? `${hash.slice(0, 8)}…${hash.slice(-4)}` : hash);
 
-// Date → valor para <input type="datetime-local"> (no fuso local)
 export function toDateTimeLocal(date) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;

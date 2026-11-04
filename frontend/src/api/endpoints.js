@@ -1,4 +1,3 @@
-// Uma função por endpoint da API. As páginas chamam estas funções, nunca o fetch direto.
 import { request } from './client';
 
 const qs = (params) => {

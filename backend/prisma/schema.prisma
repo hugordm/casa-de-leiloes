@@ -1,4 +1,3 @@
-// Schema do banco da Casa de Leilões.
 // Convenções:
 // - Dinheiro SEMPRE em centavos (Int). Ex.: R$ 150,00 = 15000.
 // - Datas (DateTime) são gravadas em UTC pelo Prisma.

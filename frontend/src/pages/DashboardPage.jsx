@@ -1,4 +1,3 @@
-// "/painel" (leiloeiro) — resultados dos lotes, total recebido e cancelamento.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { lotsApi, meApi } from '../api/endpoints';
@@ -112,8 +111,7 @@ export function DashboardPage() {
         <ul className="dash-list">
           {data.lots.map(({ lot, result, winnerAlias, receiptCode }) => {
             const info = RESULT[result] ?? { label: result, tone: 'neutral' };
-            // Lote agendado ou ao vivo pode ser cancelado, mesmo com lances (estorno automático).
-            // Encerrado/liquidado não. Quem decide de verdade é o back-end.
+            // Só esconde o botão; quem decide de verdade se pode cancelar é o back-end.
             const canCancel = result === 'live' || result === 'scheduled';
             return (
               <li key={lot.id} className="dash-item card">

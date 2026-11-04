@@ -1,5 +1,4 @@
-// GET /receipts/:code — comprovante público de arremate.
-// Mostra o APELIDO do vencedor no lote, nunca nome ou e-mail.
+// Comprovante público: mostra o APELIDO do vencedor no lote, nunca nome ou e-mail.
 const prisma = require('../lib/prisma');
 const AppError = require('../errors/AppError');
 const { bidderAlias } = require('./hashChain.service');
@@ -27,7 +26,6 @@ async function getReceipt(code) {
       bidCount: lot.bidCount,
       endsAt: lot.endsAt,
     },
-    // Rota do front e endpoint da API para conferir a corrente de lances deste lote.
     auditUrl: `/auditoria/${lot.id}`,
     auditApiUrl: `/audit/${lot.id}`,
   };

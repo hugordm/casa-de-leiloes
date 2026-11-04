@@ -1,6 +1,3 @@
-// Campo de senha com botão "olho" para mostrar/ocultar o que foi digitado.
-// Usado em todos os formulários com senha (login e cadastro).
-// Repassa as demais props (id, value, onChange, autoComplete...) para o <input>.
 import { useState } from 'react';
 import { Icon } from './Icon';
 

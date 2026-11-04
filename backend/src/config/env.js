@@ -1,5 +1,3 @@
-// Lê as variáveis de ambiente em um único lugar.
-// Em desenvolvimento elas vêm do arquivo backend/.env; em produção (Render), do painel.
 require('dotenv').config({ quiet: true });
 
 function required(name) {
@@ -42,7 +40,6 @@ module.exports = {
   // Segredo da corrente de hashes da auditoria e dos apelidos. Fica só no ambiente, nunca no banco:
   // quem tiver acesso só ao banco não consegue recalcular os hashes. A API não inicia sem ele.
   AUDIT_SECRET: requiredSecret('AUDIT_SECRET'),
-  // Endereços do front autorizados no CORS (variável CORS_ORIGIN, separados por vírgula)
   CORS_ORIGINS: corsOrigins(),
   // E-mails transacionais (Resend). Desligados por padrão: sem EMAIL_ENABLED=true e
   // RESEND_API_KEY, os envios são ignorados (com log) e o resto do sistema segue igual.
@@ -55,8 +52,7 @@ module.exports = {
   ANTHROPIC_CHAT_MODEL: process.env.ANTHROPIC_CHAT_MODEL || 'claude-haiku-5-5',
   // Endereço do front, usado nos links dos e-mails (padrão: a 1ª origem do CORS).
   APP_URL: (process.env.APP_URL || corsOrigins()[0]).replace(/\/+$/, ''),
-  // API do Art Institute of Chicago (catálogo de obras)
   AIC_API_URL: process.env.AIC_API_URL || 'https://api.artic.edu/api/v1',
-  // A AIC bloqueia (Cloudflare) requisições sem este cabeçalho de identificação
+  // A AIC bloqueia (Cloudflare) requisições sem User-Agent identificado.
   AIC_USER_AGENT: process.env.AIC_USER_AGENT || 'casa-de-leiloes-verzel',
 };

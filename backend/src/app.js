@@ -26,17 +26,17 @@ app.use(cors({ origin: env.CORS_ORIGINS }));
 app.use(express.json());
 
 app.use('/health', healthRoutes);
-app.use('/docs', docsRoutes); // Swagger UI (docs/openapi.yaml)
+app.use('/docs', docsRoutes);
 app.use('/auth', authRoutes);
 app.use('/catalog', catalogRoutes);
 app.use('/lots', lotsRoutes);
 app.use('/wallet', walletRoutes);
 app.use('/me', meRoutes);
 app.use('/images', imagesRoutes);
-app.use('/assistant', assistantRoutes); // chat com a IA (Anthropic)
+app.use('/assistant', assistantRoutes);
 app.use(publicRoutes); // /audit/:lotId e /receipts/:code
 
-// Precisam ficar por último: 404 para rotas desconhecidas e tratamento central de erros.
+// Precisam ficar por último.
 app.use(notFound);
 app.use(errorHandler);
 

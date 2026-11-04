@@ -1,5 +1,3 @@
-// Templates dos e-mails transacionais: cada função devolve { subject, html, text }.
-//
 // HTML de e-mail é diferente de HTML de site: clientes como Gmail e Outlook ignoram
 // <style> externo e CSS moderno. Por isso: layout em <table>, estilos inline, largura
 // máxima de 560px (fluida no celular) e fontes "seguras". Sempre com versão em texto puro.
@@ -85,7 +83,6 @@ const paragraph = (html) =>
 const infoTable = (rows) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;border-top:1px solid ${COLORS.border};border-bottom:1px solid ${COLORS.border};">${rows.join('')}</table>`;
 
-// ---------- "Você foi superado" (para o líder anterior) ----------
 // Não revela QUEM cobriu: nem nome, nem e-mail, nem apelido.
 function outbidEmail({ name, lot, roomUrl }) {
   const title = `Você foi superado em "${lot.title}"`;
@@ -118,7 +115,6 @@ function outbidEmail({ name, lot, roomUrl }) {
   return { subject: title, html, text };
 }
 
-// ---------- "Você venceu" (para o vencedor) ----------
 function wonEmail({ name, lot, amountCents, receiptCode, receiptUrl }) {
   const html = layout({
     preheader: `Você arrematou "${lot.title}" por ${formatBRL(amountCents)}.`,
@@ -147,7 +143,6 @@ function wonEmail({ name, lot, amountCents, receiptCode, receiptUrl }) {
   return { subject: `Você arrematou "${lot.title}"`, html, text };
 }
 
-// ---------- "Seu lote foi encerrado" (para o leiloeiro) ----------
 function lotEndedEmail({ name, lot, sold, amountCents, winnerAlias, receiptUrl, dashboardUrl }) {
   const resultRows = sold
     ? [infoRow('Resultado', 'Vendido'), infoRow('Valor', formatBRL(amountCents)), infoRow('Arrematante', winnerAlias), infoRow('Lances', String(lot.bidCount))]
@@ -186,7 +181,6 @@ function formatRemaining(ms) {
   return `${minutes} min`;
 }
 
-// ---------- "Seu lote começou a receber lances" (para o leiloeiro, no 1º lance) ----------
 // Quem deu o lance aparece só pelo apelido (privacidade).
 function firstBidEmail({ name, lot, bidderAlias, now, roomUrl }) {
   const remaining = formatRemaining(new Date(lot.endsAt) - now);
@@ -221,7 +215,6 @@ function firstBidEmail({ name, lot, bidderAlias, now, roomUrl }) {
   return { subject: `Seu lote "${lot.title}" começou a receber lances`, html, text };
 }
 
-// ---------- Resumo de lances (para o leiloeiro, no máximo 1 a cada 15 min por lote) ----------
 function bidDigestEmail({ name, lot, newBids, leaderAlias, now, roomUrl }) {
   const remaining = formatRemaining(new Date(lot.endsAt) - now);
   const label = newBids === 1 ? '1 lance novo' : `${newBids} lances novos`;
@@ -258,7 +251,6 @@ function bidDigestEmail({ name, lot, newBids, leaderAlias, now, roomUrl }) {
   return { subject: `"${lot.title}": ${label}`, html, text };
 }
 
-// ---------- "Lote cancelado" (para quem deu lance no lote) ----------
 // O líder recebe a informação do valor liberado; os demais, só o aviso.
 function lotCancelledEmail({ name, lot, wasLeader, releasedCents, showcaseUrl }) {
   const money = wasLeader

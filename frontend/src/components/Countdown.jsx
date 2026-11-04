@@ -1,4 +1,4 @@
-// Contagem regressiva baseada na hora do SERVIDOR (useServerNow).
+// Usa a hora do SERVIDOR (useServerNow): o relógio do usuário pode estar errado.
 // Se endsAt mudar (anti-sniping), o tempo é recalculado na hora: basta o pai passar o novo valor.
 import { useServerNow } from '../hooks/useServerNow';
 import { formatDuration } from '../utils/format';

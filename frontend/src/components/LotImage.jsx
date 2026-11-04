@@ -1,4 +1,3 @@
-// Imagem da obra com fallback elegante (sem imagem ou se o link falhar).
 // A API devolve as imagens da AIC como caminho do proxy ("/images/aic/<id>"),
 // porque o servidor de imagens da AIC bloqueia acesso direto do navegador.
 import { useState } from 'react';
