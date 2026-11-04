@@ -309,7 +309,14 @@ nesse campo, as consultas percorrem toda a tabela."
   antes, Bitmap Scan em ~1.000 linhas do usuário + Sort (0,87 ms); depois, `Index Scan Backward`
   lendo só 50 linhas (0,05 ms). A soma de CREDIT do painel continua usando o índice.
 
-**Revisado/ajustado por mim:** (a preencher)
+**Revisado/ajustado por mim:**
+- Li o feedback técnico e decidi quais pontos virariam melhorias: índice no
+  banco, limpeza de comentários, testes no front-end e identidade visual.
+- Estudei o que é o EXPLAIN e comparei o plano da consulta antes e depois.
+  Antes, o Postgres usava o índice (status, endsAt), que não ajudava a achar
+  o líder, e descartava 9.952 linhas pelo filtro; depois, com o índice
+  composto (leaderId, status), passou a ler só 50 linhas. Assim entendi por
+  que esse índice acelera o cálculo do saldo comprometido.
 
 ### Etapa 2 — Comentários
 
@@ -324,7 +331,9 @@ nesse campo, as consultas percorrem toda a tabela."
 - Verificação de que nenhuma lógica mudou: cada arquivo foi comparado antes/depois com os
   comentários removidos (idênticos nos 73 arquivos de código) e os 122 testes do back-end passaram.
 
-**Revisado/ajustado por mim:** (a preencher)
+**Revisado/ajustado por mim:**
+- Defini a regra de manter só comentários que explicam o porquê de uma
+  decisão (concorrência, segurança, regra de negócio).
 
 ### Etapa 3 — Testes no front
 
@@ -343,7 +352,9 @@ exibição do saldo na carteira."
   os dois testes de recusa falharam (mudança desfeita em seguida).
 - README: seção de testes do front e nova seção "Decisões técnicas" (incluindo o índice).
 
-**Revisado/ajustado por mim:** (a preencher)
+**Revisado/ajustado por mim:**
+- Pedi testes no front-end, que antes só existiam no back, e acompanhei
+  que os 9 testes do front e os 122 do back passavam antes de cada merge.
 
 ### Etapa 4 — Identidade visual (branch `visual`)
 
@@ -367,7 +378,16 @@ paleta, tipografia e componentes, especialmente nas telas de lances, contagem re
 - Prints de vitrine, sala, carteira e auditoria (claro/escuro, desktop/celular) tirados com o Chrome
   headless contra um banco de prévia separado (`leiloes_preview`), sem tocar no banco local.
 
-**Revisado/ajustado por mim:** (a preencher)
+**Revisado/ajustado por mim:**
+- Comparei três direções numa prévia e escolhi a de catálogo de leilão,
+  com o registro em fonte mono no histórico de lances e na auditoria. Pedi
+  que tudo fosse feito numa branch separada até eu aprovar.
+- Revisei os prints de todas as telas (claro, escuro, desktop e celular) e
+  pedi correções: o botão do assistente cobria conteúdo, o botão 'usar'
+  encostava na borda no celular e, no site publicado, a data de encerramento
+  invadia o valor do arremate num lote encerrado.
+- Conferi o deploy na Vercel e no Render (deploy 'Live', migrations de
+  índice aplicadas) depois do merge.
 
 ## Funcionalidade iniciada e descartada
 
