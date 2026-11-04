@@ -389,6 +389,23 @@ paleta, tipografia e componentes, especialmente nas telas de lances, contagem re
 - Conferi o deploy na Vercel e no Render (deploy 'Live', migrations de
   índice aplicadas) depois do merge.
 
+### Ajuste — lote de demonstração sempre ao vivo
+
+**Gerado com IA:**
+- Levantamento de opções para o portfólio nunca ficar sem lote ao vivo (estender o `endsAt` no
+  banco, script manual ou rotina automática), confirmando no código que o `endsAt` não entra no hash
+  dos lances nem no selo. Escolhi a rotina automática.
+- `demoLot.service.js`: com `DEMO_KEEP_LIVE=true` (desligada por padrão), o job de liquidação cria um
+  lote de demonstração quando não há nenhum ao vivo, sem lances, ao vivo por 30 dias, com obra salva
+  no código e o leiloeiro demo. Trava com `pg_advisory_xact_lock` para rodadas simultâneas não
+  criarem dois lotes.
+- 5 testes (`tests/demoLot.test.js`): variável desligada, já existe lote ao vivo, nenhum lote ao vivo
+  (cria exatamente um), 5 rodadas simultâneas (um lote só) e leiloeiro demo inexistente. Prova da
+  trava: sem a linha do lock, as rodadas simultâneas criaram de 3 a 5 lotes e o teste falhou.
+- README: variável `DEMO_KEEP_LIVE` nas variáveis de ambiente (local e produção) e nos testes.
+
+**Revisado/ajustado por mim:** (a preencher)
+
 ## Funcionalidade iniciada e descartada
 
 Comecei a implementar "Esqueci minha senha", mas parei ao reler o PDF: recuperação de senha está em "Não precisa fazer". Desfiz tudo antes de qualquer commit (`git restore` e remoção dos arquivos novos), regenerei o Prisma Client (os testes quebraram porque ele ainda refletia o schema da tarefa cancelada) e removi do banco local a migration que já tinha sido aplicada. Os testes voltaram a passar e nada chegou à produção.

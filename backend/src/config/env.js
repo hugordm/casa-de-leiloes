@@ -44,6 +44,8 @@ module.exports = {
   // E-mails transacionais (Resend). Desligados por padrão: sem EMAIL_ENABLED=true e
   // RESEND_API_KEY, os envios são ignorados (com log) e o resto do sistema segue igual.
   EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
+  // Portfólio publicado: recria um lote de demonstração quando não houver nenhum ao vivo.
+  DEMO_KEEP_LIVE: process.env.DEMO_KEEP_LIVE === 'true',
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   EMAIL_FROM: process.env.EMAIL_FROM || 'Casa de Leilões <onboarding@resend.dev>',
   // Assistente (chat) com a API da Anthropic. Sem chave, POST /assistant/chat responde 503

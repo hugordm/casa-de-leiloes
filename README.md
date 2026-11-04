@@ -139,6 +139,7 @@ Back-end (`backend/.env`):
 | `EMAIL_FROM` | não (`Casa de Leilões <onboarding@resend.dev>`) | Remetente com nome, ex.: `Casa de Leilões <leiloes@seudominio.com>` (domínio verificado no Resend) |
 | `ANTHROPIC_API_KEY` | não | Chave da API da Anthropic para o assistente. Sem ela, `POST /assistant/chat` responde 503 e o resto do site funciona normalmente |
 | `ANTHROPIC_CHAT_MODEL` | não (`claude-haiku-5-5`) | Modelo usado pelo assistente |
+| `DEMO_KEEP_LIVE` | não (`false`) | `true` faz o job de liquidação criar um lote de demonstração (sem lances, ao vivo por 30 dias, obra salva no código, leiloeiro `leiloeiro@demo.com`) sempre que não houver nenhum lote ao vivo. Pensado só para o portfólio publicado |
 
 As chaves do Resend e da Anthropic ficam **só no back-end**. O front nunca as recebe: ele chama a
 nossa API, e a API chama os serviços externos.
@@ -187,7 +188,7 @@ Os testes usam um banco separado, `leiloes_test`, no mesmo container. Ele é rec
 e há uma trava que impede rodar os testes contra um banco cujo nome não termine em `_test`.
 O job de liquidação não roda nos testes: só o `server.js` o inicia, e os testes importam apenas o `app.js`.
 
-**122 testes** em 11 arquivos. Cobertura:
+**127 testes** em 12 arquivos. Cobertura:
 - **Lances:** todas as regras de recusa, anti-sniping e concorrência com `FOR UPDATE`.
 - **Carteira:** comprometido e liberação ao ser superado.
 - **Liquidação:** com e sem lances, débito/crédito, comprovante, idempotência e lance × liquidação
@@ -197,6 +198,8 @@ O job de liquidação não roda nos testes: só o `server.js` o inicia, e os tes
 - **Auditoria:** alteração, remoção e inserção direto no banco.
 - **Autenticação:** limites de senha (7 e 73 recusados, 8 e 72 aceitos), hash bcrypt e login.
 - **Privacidade.**
+- **Lote de demonstração (`DEMO_KEEP_LIVE`):** desligado não cria nada; com lote ao vivo não cria
+  nada; sem lote ao vivo cria exatamente um; 5 rodadas simultâneas criam um lote só (a trava).
 - **Extras:**
   - o documento OpenAPI (válido e cobrindo todas as rotas);
   - e-mails, com o Resend simulado (incluindo os avisos ao leiloeiro e a janela de 15 min do resumo);
@@ -510,6 +513,11 @@ rewrite para rotas como `/lotes/1`. Assim, um F5 em qualquer página não dá 40
 Extras (opcionais; sem eles o site funciona, só sem e-mail e sem assistente): `APP_URL` (domínio da
 Vercel), `EMAIL_ENABLED=true`, `RESEND_API_KEY`, `EMAIL_FROM`, `ANTHROPIC_API_KEY` e
 `ANTHROPIC_CHAT_MODEL=claude-haiku-5-5`.
+
+`DEMO_KEEP_LIVE=true` (opcional) mantém a vitrine "Ao vivo" do portfólio sempre com um lote: quando
+não houver nenhum, o job cria um lote de demonstração sem lances. Uma trava no banco
+(`pg_advisory_xact_lock`) garante um lote só, mesmo com rodadas simultâneas ou várias instâncias.
+Não mexe em lotes existentes nem na corrente de hashes.
 
 **Vercel (front):** `VITE_API_URL` = URL do Render, sem `/` final. O valor entra no **build**:
 se mudar, é preciso fazer um *Redeploy*.
