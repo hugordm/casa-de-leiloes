@@ -111,6 +111,8 @@
 .room__sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem !important; }
 .room__time { font-family: var(--font-serif); font-size: 2.3rem; line-height: 1.15; margin-top: 0.15rem !important; }
 .room__time .countdown { font-weight: 400; letter-spacing: 0; }
+/* Lote encerrado mostra uma data, não um cronômetro: texto menor para não invadir a coluna do preço */
+.room__time .countdown--ended { font-size: 1.15rem; white-space: normal; color: var(--text-muted); }
 .room__ext { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem !important; }
 .room__clock--extended .room__ext { color: var(--accent); }
 
