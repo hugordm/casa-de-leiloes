@@ -85,119 +85,88 @@
 .role-option--active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- Sala do lote ---------- */
-.room__grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
+.room__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 3rem; align-items: start; }
 .room__media { margin: 0; position: sticky; top: 90px; }
 .room__media .lot-image {
-  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
   max-height: 72vh;
   object-fit: contain;
   min-height: 300px;
+  background: var(--image-bg);
 }
-.room__media figcaption { display: flex; gap: 1rem; justify-content: center; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
-.room__header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-.room__header .eyebrow { margin: 0; }
-.room__title { font-size: clamp(2rem, 4vw, 2.7rem); margin: 0.5rem 0 0.2rem; }
-.room__artist { color: var(--text-muted); margin-bottom: 1.25rem; }
+.room__media figcaption { display: flex; gap: 1rem; margin-top: 0.6rem; font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-serif); font-style: italic; }
+.room__panel { border-top: 1px solid var(--rule-ink); padding-top: 1rem; }
+.room__header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.room__lotno { margin: 0; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); }
+.room__lotno b { font-family: var(--font-serif); font-weight: 400; font-size: 1.6rem; letter-spacing: 0; color: var(--text); margin-left: 0.35rem; font-variant-numeric: lining-nums; }
+.room__title { font-size: clamp(2.1rem, 4vw, 2.9rem); margin: 0.6rem 0 0.15rem; }
+.room__artist { color: var(--text-muted); font-family: var(--font-serif); font-style: italic; margin-bottom: 1.5rem; }
 
-.room__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem 1.25rem;
-  margin: 1.25rem 0;
-  padding: 1.1rem 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.room__stats dt { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.room__stats dd { margin: 0.15rem 0 0; font-weight: 600; font-size: 1.05rem; }
-.room__price { font-family: var(--font-serif); font-size: 2.1rem !important; line-height: 1.1; font-variant-numeric: lining-nums; }
-.room__timer { font-size: 1.5rem !important; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.room__timer--extended .countdown { color: var(--warn); }
-.extended-tag {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  background: var(--warn-soft);
-  color: var(--warn);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-.room__cta { text-align: center; }
-.room__cta p { color: var(--text-muted); }
-.room__note { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem; background: var(--surface-2); padding: 0.75rem 0.9rem; border-radius: var(--radius-sm); }
-.bid-form { margin-top: 0.25rem; }
-.audit-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 1.25rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-decoration: none;
-}
-.room__lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 2rem; margin-top: 2rem; align-items: start; }
+.room__figures { display: grid; grid-template-columns: minmax(0, 1fr) auto; margin: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.room__figures > div { padding: 0.9rem 0; min-width: 0; }
+.room__figures > div + div { padding-left: 1.5rem; border-left: 1px solid var(--border); text-align: right; }
+.room__figures dt { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+.room__figures dd { margin: 0; }
+.room__price { font-family: var(--font-serif); font-size: 2.3rem; line-height: 1.15; margin-top: 0.15rem !important; }
+.room__sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem !important; }
+.room__time { font-family: var(--font-serif); font-size: 2.3rem; line-height: 1.15; margin-top: 0.15rem !important; }
+.room__time .countdown { font-weight: 400; letter-spacing: 0; }
+.room__ext { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem !important; }
+.room__clock--extended .room__ext { color: var(--accent); }
+
+.room__next { margin: 1.5rem 0 1rem; }
+.room__next .label { margin: 0; }
+.room__next-value { font-family: var(--font-serif); font-size: 1.9rem; color: var(--accent); margin: 0.1rem 0 0; line-height: 1.2; }
+.bid-form { display: grid; gap: 0.75rem; }
+.bid-form .field { margin: 0; }
+.btn--bid { background: var(--accent); color: var(--bg); }
+.btn--bid:hover:not(:disabled) { background: var(--accent-strong); color: var(--bg); }
+.btn--bid:disabled { background: var(--surface-2); color: var(--text-muted); opacity: 1; }
+
+.increments { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.9rem; }
+.increments caption { text-align: left; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); padding-bottom: 0.4rem; }
+.increments th,
+.increments td { padding: 0.45rem 0; border-top: 1px solid var(--border); text-align: left; font-weight: 400; }
+.increments td { text-align: right; }
+.increments tr:last-child th,
+.increments tr:last-child td { border-bottom: 1px solid var(--border); }
+.increments__use { width: 4rem; }
+.link-btn { font: inherit; font-size: 0.85rem; background: none; border: none; padding: 0; color: var(--text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.link-btn:hover:not(:disabled) { color: var(--accent); }
+.link-btn:disabled { color: var(--text-muted); cursor: not-allowed; text-decoration: none; }
+
+.room__cta { display: grid; gap: 0.5rem; margin-top: 1rem; }
+.room__cta p { margin: 0; }
+.room__note { color: var(--text-muted); font-size: 0.9rem; margin: 1rem 0 0; }
+.room__lower { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 3rem; margin-top: 3rem; align-items: start; }
 .room__lower .card + .card { margin-top: 0; }
 
-/* Faixa "você está ganhando / foi superado" */
-.me-banner {
-  display: flex;
-  gap: 0.8rem;
-  align-items: flex-start;
-  padding: 0.9rem 1rem;
-  border-radius: var(--radius);
-  border: 1px solid;
-  margin: 0.5rem 0;
-}
-.me-banner .icon { flex-shrink: 0; margin-top: 3px; }
-.me-banner strong { display: block; font-size: 1.05rem; }
-.me-banner p { margin: 0.1rem 0 0; font-size: 0.9rem; }
-.me-banner--leading { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
-.me-banner--outbid { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); animation: attention 0.6s ease-out; }
-.me-banner--won { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
-.me-banner--neutral { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-muted); }
-.me-banner--neutral strong { color: var(--text); }
-.me-banner p,
+/* Situação do usuário: um fio lateral e texto, sem caixa colorida */
+.me-banner { border-left: 2px solid; padding: 0.15rem 0 0.15rem 0.9rem; margin: 1.25rem 0 0; }
+.me-banner strong { display: block; font-family: var(--font-serif); font-weight: 400; font-size: 1.25rem; }
+.me-banner p { margin: 0.1rem 0 0; font-size: 0.9rem; color: var(--text-muted); }
 .me-banner a { color: inherit; }
-@keyframes attention {
-  0%, 100% { transform: none; }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-}
+.me-banner--leading { border-color: var(--ok); color: var(--ok); }
+.me-banner--outbid { border-color: var(--accent); color: var(--accent); }
+.me-banner--won { border-color: var(--text); color: var(--text); }
+.me-banner--neutral { border-color: var(--border-strong); color: var(--text); }
 
-/* Histórico de lances */
-.position-pill { font-size: 0.88rem; background: var(--accent-soft); color: var(--accent-strong); padding: 0.25rem 0.75rem; border-radius: 999px; margin: 0; }
-.bid-history { list-style: none; padding: 0; margin: 0.75rem 0 0; }
-.bid-row {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto;
-  grid-template-areas: 'seq alias amount' 'seq time amount';
-  column-gap: 0.75rem;
-  padding: 0.7rem 0.6rem;
-  border-bottom: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.bid-row:last-child { border-bottom: none; }
-.bid-row__seq { grid-area: seq; color: var(--text-muted); font-variant-numeric: tabular-nums; align-self: center; }
-.bid-row__alias { grid-area: alias; font-family: var(--font-mono); font-size: 0.88rem; display: flex; align-items: center; gap: 0.4rem; }
-.bid-row__time { grid-area: time; font-size: 0.78rem; color: var(--text-muted); }
-.bid-row__amount { grid-area: amount; align-self: center; font-weight: 600; font-variant-numeric: tabular-nums; }
-.bid-row--top .bid-row__amount { color: var(--accent); font-size: 1.05rem; }
-.bid-row--mine { background: var(--accent-soft); border-bottom-color: transparent; }
+.position-note { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+.position-note strong { color: var(--text); font-weight: 500; }
+.ledger__foot { margin-top: 0.75rem; }
 .you-tag {
   font-family: var(--font-sans);
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: var(--primary-bg);
-  color: var(--primary-text);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  padding: 0 0.3rem;
+  margin-left: 0.45rem;
+  border-radius: var(--radius-sm);
 }
 .details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1rem; margin: 0.5rem 0 1rem; }
-.details dt { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.details dt { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
 .details dd { margin: 0.1rem 0 0; }
 
 /* ---------- Auditoria ---------- */
@@ -420,9 +389,10 @@
   .lot-row__price { text-align: left; padding-top: 0.6rem; }
   .lot-row__time { padding-top: 0.6rem; }
   .room__grid,
-  .room__lower { grid-template-columns: 1fr; gap: 1.25rem; }
+  .room__lower { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
   .room__media { position: static; }
   .room__media .lot-image { max-height: 55vh; min-height: 220px; }
+  .room__grid { gap: 1.5rem; }
   .filters { grid-template-columns: 1fr 1fr; }
   .filters__search { grid-column: 1 / -1; }
   .dash-item { grid-template-columns: 64px minmax(0, 1fr); }
@@ -443,17 +413,11 @@
 @media (max-width: 560px) {
   .main { padding-top: 1.25rem; }
   .hero { padding-top: 0.5rem; }
-  .room__stats { grid-template-columns: 1fr 1fr; gap: 0.85rem; }
-  .room__price { font-size: 1.7rem !important; }
-  .room__timer { font-size: 1.2rem !important; }
+  .room__price,
+  .room__time { font-size: 1.9rem; }
+  .room__figures { grid-template-columns: minmax(0, 1fr); }
+  .room__figures > div + div { padding-left: 0; border-left: none; border-top: 1px solid var(--border); text-align: left; }
   .details { grid-template-columns: 1fr; }
-  /* Histórico no celular: apelido numa linha inteira; data e valor na linha de baixo */
-  .bid-row {
-    grid-template-columns: 2.2rem minmax(0, 1fr) auto;
-    grid-template-areas: 'seq alias alias' 'seq time amount';
-    row-gap: 0.15rem;
-  }
-  .bid-row__alias { font-size: 0.82rem; flex-wrap: wrap; }
   .seal { flex-direction: column; text-align: center; }
   .seal__title { font-size: 1.6rem; }
   .chain__hashes { grid-template-columns: 1fr; }

@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { authApi, lotsApi, walletApi } from '../src/api/endpoints';
+import { authApi, lotsApi, publicApi, walletApi } from '../src/api/endpoints';
 import { ApiError } from '../src/api/client';
 import { LotRoomPage } from '../src/pages/LotRoomPage';
 import { renderWithProviders } from './renderWithProviders';
@@ -11,6 +11,8 @@ vi.mock('../src/api/endpoints', () => ({
   authApi: { me: vi.fn() },
   lotsApi: { get: vi.fn(), bid: vi.fn() },
   walletApi: { get: vi.fn() },
+  // A sala busca os hashes do registro de lances na auditoria pública.
+  publicApi: { audit: vi.fn() },
 }));
 
 const HOUR = 60 * 60 * 1000;
@@ -74,6 +76,7 @@ beforeEach(() => {
   localStorage.setItem('leiloes.token', 'token-de-teste');
   authApi.me.mockResolvedValue({ user: { id: 2, name: 'Ana', email: 'ana@demo.com', role: 'BIDDER' } });
   walletApi.get.mockResolvedValue({ balanceCents: 500000, committedCents: 0, availableCents: 500000, transactions: [] });
+  publicApi.audit.mockResolvedValue({ bids: [] });
 });
 
 describe('Sala do lote: envio de lance', () => {

@@ -2,7 +2,7 @@
 // persistente com o servidor.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
-import { lotsApi, walletApi } from '../api/endpoints';
+import { lotsApi, publicApi, walletApi } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
@@ -15,10 +15,12 @@ import { LotImage } from '../components/LotImage';
 import { MoneyInput } from '../components/MoneyInput';
 import { ErrorState, Loading } from '../components/PageState';
 import { StatusBadge } from '../components/StatusBadge';
-import { centsToInput, formatBRL, formatDateTime, formatDateTimeSeconds, parseBRL } from '../utils/format';
-import { displayStatusAt, lotNumber } from '../utils/lot';
+import { centsToInput, formatBRL, formatDateTime, parseBRL, shortHash } from '../utils/format';
+import { displayStatusAt, lotDigits } from '../utils/lot';
 
 const POLL_MS = 2000;
+const INCREMENT_STEPS = [0, 1, 2, 5];
+const ledgerTime = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 export function LotRoomPage() {
   const { id } = useParams();
@@ -35,6 +37,7 @@ export function LotRoomPage() {
   const [bidError, setBidError] = useState(null);
   const [bidding, setBidding] = useState(false);
   const [extendedAt, setExtendedAt] = useState(null);
+  const [hashes, setHashes] = useState(new Map());
 
   const previousLot = useRef(null);
   const requestSeq = useRef(0); // descarta respostas antigas que cheguem fora de ordem
@@ -98,6 +101,18 @@ export function LotRoomPage() {
     setLoadError(null);
     setBidInput('');
   }, [id]);
+
+  // GET /lots/:id não traz o hash dos lances; ele vem da auditoria pública, buscada só
+  // quando entra um lance novo (e não a cada polling de 2 s).
+  const lotId = lot?.id;
+  const bidCount = lot?.bidCount;
+  useEffect(() => {
+    if (!lotId || !bidCount) return;
+    publicApi
+      .audit(lotId)
+      .then((audit) => setHashes(new Map(audit.bids.map((b) => [b.seq, b.hash]))))
+      .catch(() => {});
+  }, [lotId, bidCount]);
 
   // Polling só enquanto o lote pode mudar. Liquidado/cancelado → nada mais muda.
   const finished = lot && (lot.status === 'SETTLED' || lot.status === 'CANCELLED');
@@ -179,11 +194,12 @@ export function LotRoomPage() {
     }
   }
 
-  const quickBids = [
-    { label: 'Mínimo', cents: lot.minNextBidCents },
-    { label: `+${formatBRL(lot.minIncrementCents)}`, cents: lot.minNextBidCents + lot.minIncrementCents },
-    { label: `+${formatBRL(lot.minIncrementCents * 5)}`, cents: lot.minNextBidCents + lot.minIncrementCents * 5 },
-  ];
+  const canBid = status === 'live' && isBidder;
+  const leading = me?.status === 'leading';
+  const steps = INCREMENT_STEPS.map((n) => ({
+    label: n === 0 ? 'Mínimo' : `+${n} ${n === 1 ? 'incremento' : 'incrementos'}`,
+    cents: lot.minNextBidCents + lot.minIncrementCents * n,
+  }));
 
   return (
     <div className="container room">
@@ -200,9 +216,11 @@ export function LotRoomPage() {
           </figcaption>
         </figure>
 
-        <section className="room__panel card" aria-labelledby="lot-title">
+        <section className="room__panel" aria-labelledby="lot-title">
           <div className="room__header">
-            <p className="eyebrow">{lotNumber(lot.id)}</p>
+            <p className="room__lotno">
+              Lote <b>{lotDigits(lot.id)}</b>
+            </p>
             <StatusBadge status={status} />
           </div>
           <h1 id="lot-title" className="room__title">
@@ -210,37 +228,45 @@ export function LotRoomPage() {
           </h1>
           <p className="room__artist">{lot.artist}</p>
 
-          <MeBanner lot={lot} me={me} status={status} />
-
-          <dl className="room__stats">
+          <dl className="room__figures">
             <div>
               <dt>{lot.finalPriceCents ? 'Arrematado por' : lot.bidCount ? 'Lance atual' : 'Lance inicial'}</dt>
-              <dd className="room__price">{formatBRL(lot.finalPriceCents ?? lot.currentBidCents ?? lot.startingBidCents)}</dd>
+              <dd className="room__price num">{formatBRL(lot.finalPriceCents ?? lot.currentBidCents ?? lot.startingBidCents)}</dd>
+              <dd className="room__sub">
+                {lot.bidCount} {lot.bidCount === 1 ? 'lance' : 'lances'}
+                {(lot.winnerAlias || lot.leaderAlias) && (
+                  <>
+                    {' · '}
+                    {lot.winnerAlias ? 'vencedor' : 'líder'} <span className="mono-alias">{lot.winnerAlias ?? lot.leaderAlias}</span>
+                  </>
+                )}
+              </dd>
             </div>
-            <div>
-              <dt>
-                {status === 'scheduled' ? 'Começa em' : status === 'live' ? 'Termina em' : 'Encerrado em'}
-              </dt>
-              <dd className={`room__timer ${extendedRecently ? 'room__timer--extended' : ''}`}>
+            <div className={`room__clock ${extendedRecently ? 'room__clock--extended' : ''}`}>
+              <dt>{status === 'scheduled' ? 'Abre em' : status === 'live' ? 'Fecha em' : 'Encerrado em'}</dt>
+              <dd className="room__time num">
                 {status === 'scheduled' && <Countdown target={lot.startsAt} />}
                 {status === 'live' && <Countdown target={lot.endsAt} />}
                 {(status === 'ended' || status === 'cancelled') && (
                   <span className="countdown countdown--ended">{formatDateTime(lot.endsAt)}</span>
                 )}
-                {extendedRecently && status === 'live' && <span className="extended-tag">+2 min</span>}
               </dd>
-            </div>
-            <div>
-              <dt>Lances</dt>
-              <dd>{lot.bidCount}</dd>
-            </div>
-            <div>
-              <dt>{lot.winnerAlias ? 'Vencedor' : 'Líder'}</dt>
-              <dd className="mono-alias">{lot.winnerAlias ?? lot.leaderAlias ?? '—'}</dd>
+              {status === 'live' && (
+                <dd className="room__ext">{extendedRecently ? '+2 min: lance nos minutos finais' : 'Lance nos 2 min finais estende +2 min'}</dd>
+              )}
             </div>
           </dl>
 
-          {status === 'live' && isBidder && (
+          <MeBanner lot={lot} me={me} status={status} />
+
+          {status === 'live' && (
+            <div className="room__next">
+              <p className="label">Próximo lance mínimo</p>
+              <p className="room__next-value num">{formatBRL(lot.minNextBidCents)}</p>
+            </div>
+          )}
+
+          {canBid && (
             <form className="bid-form" onSubmit={handleBid} noValidate>
               <MoneyInput
                 label="Seu lance"
@@ -250,63 +276,60 @@ export function LotRoomPage() {
                   setBidError(null);
                 }}
                 error={bidError}
-                hint={`Mínimo: ${formatBRL(lot.minNextBidCents)}${wallet ? ` · Disponível: ${formatBRL(wallet.availableCents)}` : ''}`}
-                disabled={bidding || me?.status === 'leading'}
+                hint={wallet ? `Disponível para lances: ${formatBRL(wallet.availableCents)}` : undefined}
+                disabled={bidding || leading}
               />
-              <div className="quick-bids" aria-label="Valores rápidos">
-                {quickBids.map((q) => (
-                  <button
-                    key={q.label}
-                    type="button"
-                    className="chip"
-                    onClick={() => setBidInput(centsToInput(q.cents))}
-                    disabled={bidding || me?.status === 'leading'}
-                  >
-                    {q.label}
-                  </button>
-                ))}
-              </div>
-              <Button type="submit" loading={bidding} disabled={me?.status === 'leading'} className="btn--block btn--lg">
-                {me?.status === 'leading' ? 'Você já está ganhando' : 'Dar lance'}
+              <Button type="submit" loading={bidding} disabled={leading} className="btn--block btn--lg btn--bid">
+                {leading ? 'Você já está ganhando' : 'Dar lance'}
               </Button>
-              {wallet && wallet.availableCents < lot.minNextBidCents && me?.status !== 'leading' && (
+              {wallet && wallet.availableCents < lot.minNextBidCents && !leading && (
                 <p className="field__hint">
                   Saldo disponível insuficiente para o lance mínimo. <Link to="/carteira">Depositar</Link>
                 </p>
               )}
             </form>
           )}
+
+          {status === 'live' && (
+            <table className="increments">
+              <caption>Tabela de incrementos · R$ {centsToInput(lot.minIncrementCents)} por lance</caption>
+              <tbody>
+                {steps.map((step) => (
+                  <tr key={step.label}>
+                    <th scope="row">{step.label}</th>
+                    <td className="num">{formatBRL(step.cents)}</td>
+                    {canBid && (
+                      <td className="increments__use">
+                        <button type="button" className="link-btn" onClick={() => setBidInput(centsToInput(step.cents))} disabled={bidding || leading}>
+                          usar
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
           {status === 'live' && !user && (
             <div className="room__cta">
-              <p>Entre como licitante para dar lances.</p>
               <Link to="/login" state={{ from: location.pathname }} className="btn btn--primary btn--block">
                 Entrar para dar lance
               </Link>
+              <p className="muted small">Só licitantes dão lances; visitantes acompanham o pregão.</p>
             </div>
           )}
-          {status === 'live' && isAuctioneer && (
-            <p className="room__note">
-              <Icon name="info" size={16} /> Leiloeiros acompanham o pregão, mas não dão lances.
-            </p>
-          )}
-          {status === 'ended' && lot.status === 'ACTIVE' && (
-            <p className="room__note">
-              <Icon name="clock" size={16} /> Leilão encerrado. Processando o resultado…
-            </p>
-          )}
-
-          <Link to={`/auditoria/${lot.id}`} className="audit-link">
-            <Icon name="shieldCheck" size={18} /> Auditar os lances deste lote
-          </Link>
+          {status === 'live' && isAuctioneer && <p className="room__note">Leiloeiros acompanham o pregão, mas não dão lances.</p>}
+          {status === 'ended' && lot.status === 'ACTIVE' && <p className="room__note">Leilão encerrado. Processando o resultado…</p>}
         </section>
       </div>
 
       <div className="room__lower">
         <section className="card" aria-labelledby="history-title">
           <div className="section-head">
-            <h2 id="history-title">Histórico de lances</h2>
+            <h2 id="history-title">Registro de lances</h2>
             {me?.position && (
-              <p className="position-pill">
+              <p className="position-note">
                 Sua posição: <strong>{me.position}º</strong> de {me.totalBidders}
               </p>
             )}
@@ -314,47 +337,59 @@ export function LotRoomPage() {
           {lot.recentBids.length === 0 ? (
             <p className="muted">Nenhum lance ainda. {status === 'live' ? 'Seja o primeiro!' : ''}</p>
           ) : (
-            <ol className="bid-history">
-              {lot.recentBids.map((b, index) => {
-                const mine = me?.alias && b.bidderAlias === me.alias;
-                return (
-                  <li key={b.seq} className={`bid-row ${index === 0 ? 'bid-row--top' : ''} ${mine ? 'bid-row--mine' : ''}`}>
-                    <span className="bid-row__seq">#{b.seq}</span>
-                    <span className="bid-row__alias">
-                      {b.bidderAlias}
-                      {mine && <span className="you-tag">você</span>}
-                    </span>
-                    <span className="bid-row__amount">{formatBRL(b.amountCents)}</span>
-                    <time className="bid-row__time" dateTime={b.createdAt}>
-                      {formatDateTimeSeconds(b.createdAt)}
-                    </time>
-                  </li>
-                );
-              })}
-            </ol>
+            <div className="ledger-wrap">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Nº</th>
+                    <th scope="col">Licitante</th>
+                    <th scope="col" className="ledger__amount">Valor</th>
+                    <th scope="col">Horário</th>
+                    <th scope="col">Hash</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lot.recentBids.map((b, index) => {
+                    const mine = me?.alias && b.bidderAlias === me.alias;
+                    const hash = hashes.get(b.seq);
+                    return (
+                      <tr key={b.seq} className={`${index === 0 ? 'ledger__row--top' : ''} ${mine ? 'ledger__row--mine' : ''}`}>
+                        <td>{String(b.seq).padStart(3, '0')}</td>
+                        <td>
+                          {b.bidderAlias.replace('Licitante ', '')}
+                          {mine && <span className="you-tag">você</span>}
+                        </td>
+                        <td className="ledger__amount">{formatBRL(b.amountCents)}</td>
+                        <td>
+                          <time dateTime={b.createdAt}>{ledgerTime.format(new Date(b.createdAt))}</time>
+                        </td>
+                        <td className="ledger__hash" title={hash}>
+                          {hash ? shortHash(hash) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
-          {lot.bidCount > lot.recentBids.length && (
-            <p className="muted small">
-              Mostrando os {lot.recentBids.length} lances mais recentes de {lot.bidCount}.{' '}
-              <Link to={`/auditoria/${lot.id}`}>Ver todos na auditoria</Link>
-            </p>
-          )}
+          <p className="muted small ledger__foot">
+            {lot.bidCount > lot.recentBids.length && <>Mostrando os {lot.recentBids.length} lances mais recentes de {lot.bidCount}. </>}
+            <Link to={`/auditoria/${lot.id}`}>Conferir a corrente completa na auditoria</Link>
+          </p>
         </section>
 
         <section className="card" aria-labelledby="details-title">
           <h2 id="details-title">Detalhes do lote</h2>
           <dl className="details">
             <div><dt>Leiloeiro</dt><dd>{lot.auctioneer?.name}</dd></div>
-            <div><dt>Lance inicial</dt><dd>{formatBRL(lot.startingBidCents)}</dd></div>
-            <div><dt>Incremento mínimo</dt><dd>{formatBRL(lot.minIncrementCents)}</dd></div>
-            <div><dt>Início</dt><dd>{formatDateTime(lot.startsAt)}</dd></div>
-            <div><dt>Término</dt><dd>{formatDateTime(lot.endsAt)}</dd></div>
+            <div><dt>Lance inicial</dt><dd className="num">{formatBRL(lot.startingBidCents)}</dd></div>
+            <div><dt>Incremento mínimo</dt><dd className="num">{formatBRL(lot.minIncrementCents)}</dd></div>
+            <div><dt>Início</dt><dd className="num">{formatDateTime(lot.startsAt)}</dd></div>
+            <div><dt>Término</dt><dd className="num">{formatDateTime(lot.endsAt)}</dd></div>
             {lot.attributes?.date && <div><dt>Data da obra</dt><dd>{lot.attributes.date}</dd></div>}
             {lot.attributes?.medium && <div><dt>Técnica</dt><dd>{lot.attributes.medium}</dd></div>}
           </dl>
-          <p className="muted small">
-            Anti-sniping: lances nos 2 minutos finais estendem o leilão em +2 minutos.
-          </p>
         </section>
       </div>
     </div>
@@ -365,11 +400,8 @@ function MeBanner({ lot, me, status }) {
   if (lot.status === 'CANCELLED') {
     return (
       <div className="me-banner me-banner--neutral" role="status">
-        <Icon name="info" />
-        <div>
-          <strong>Lote cancelado</strong>
-          <p>Este leilão foi cancelado pelo leiloeiro. Valores comprometidos foram liberados.</p>
-        </div>
+        <strong>Lote cancelado</strong>
+        <p>Este leilão foi cancelado pelo leiloeiro. Valores comprometidos foram liberados.</p>
       </div>
     );
   }
@@ -380,50 +412,38 @@ function MeBanner({ lot, me, status }) {
   if (me.status === 'won' || (me.status === 'leading' && status === 'ended')) {
     return (
       <div className="me-banner me-banner--won" role="status">
-        <Icon name="trophy" />
-        <div>
-          <strong>Você arrematou esta obra!</strong>
-          <p>
-            Por {formatBRL(me.myBestBidCents)}.{' '}
-            {me.receiptCode ? <Link to={`/comprovante/${me.receiptCode}`}>Ver comprovante</Link> : 'Gerando comprovante…'}
-          </p>
-        </div>
+        <strong>Você arrematou esta obra!</strong>
+        <p>
+          Por {formatBRL(me.myBestBidCents)}.{' '}
+          {me.receiptCode ? <Link to={`/comprovante/${me.receiptCode}`}>Ver comprovante</Link> : 'Gerando comprovante…'}
+        </p>
       </div>
     );
   }
   if (me.status === 'leading') {
     return (
       <div className="me-banner me-banner--leading" role="status" aria-live="polite">
-        <Icon name="check" />
-        <div>
-          <strong>Você está ganhando</strong>
-          <p>Seu lance de {formatBRL(me.myBestBidCents)} é o maior · {position}</p>
-        </div>
+        <strong>Você está ganhando</strong>
+        <p>Seu lance de {formatBRL(me.myBestBidCents)} é o maior · {position}</p>
       </div>
     );
   }
   if (me.status === 'outbid' && status === 'live') {
     return (
       <div className="me-banner me-banner--outbid" role="status" aria-live="polite">
-        <Icon name="alert" />
-        <div>
-          <strong>Você foi superado</strong>
-          <p>
-            Seu maior lance: {formatBRL(me.myBestBidCents)} · {position}. Cubra com pelo menos{' '}
-            {formatBRL(lot.minNextBidCents)}.
-          </p>
-        </div>
+        <strong>Você foi superado</strong>
+        <p>
+          Seu maior lance: {formatBRL(me.myBestBidCents)} · {position}. Cubra com pelo menos{' '}
+          {formatBRL(lot.minNextBidCents)}.
+        </p>
       </div>
     );
   }
   // perdeu (liquidado) ou foi superado num lote já encerrado
   return (
     <div className="me-banner me-banner--neutral" role="status">
-      <Icon name="info" />
-      <div>
-        <strong>Leilão encerrado</strong>
-        <p>Seu maior lance foi {formatBRL(me.myBestBidCents)} · você terminou em {position}.</p>
-      </div>
+      <strong>Leilão encerrado</strong>
+      <p>Seu maior lance foi {formatBRL(me.myBestBidCents)} · você terminou em {position}.</p>
     </div>
   );
 }
