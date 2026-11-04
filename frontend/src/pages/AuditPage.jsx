@@ -1,12 +1,14 @@
-// A corrente aparece como blocos ligados: o "prevHash" de cada bloco precisa ser igual
-// ao "hash" do bloco anterior, e é isso que o visitante consegue conferir a olho.
+// A corrente aparece como um livro de registros: a coluna "aponta para" de cada linha precisa
+// ser igual ao "hash" da linha de cima, e é isso que o visitante consegue conferir a olho.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { publicApi } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { ErrorState, Loading } from '../components/PageState';
-import { formatBRL, formatDateTimeSeconds, shortHash } from '../utils/format';
+import { formatBRL, shortHash } from '../utils/format';
 import { lotNumber, STATUS_LABEL } from '../utils/lot';
+
+const ledgerTime = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 export function AuditPage() {
   const { id } = useParams();
@@ -39,14 +41,71 @@ export function AuditPage() {
       </header>
 
       <div className={`seal ${intact ? 'seal--ok' : 'seal--broken'}`} role="status">
-        <Icon name={intact ? 'shieldCheck' : 'shieldAlert'} size={44} />
-        <div>
-          <p className="seal__title">
-            {intact ? 'Íntegro' : brokenAtSeq ? `Adulterado no lance #${brokenAtSeq}` : 'Adulterado'}
-          </p>
-          <p className="seal__message">{message}</p>
-        </div>
+        <p className="seal__stamp">{intact ? 'Íntegro' : brokenAtSeq ? `Adulterado no lance #${brokenAtSeq}` : 'Adulterado'}</p>
+        <p className="seal__message">{message}</p>
+        <p className="seal__meta">
+          Verificado agora · selo <span title={lot.seal ?? ''}>{shortHash(lot.seal) ?? '—'}</span>
+        </p>
       </div>
+
+      <section className="audit__chain" aria-labelledby="chain-title">
+        <h2 id="chain-title">Registro da corrente</h2>
+        <div className="ledger-wrap">
+          <table className="ledger ledger--audit">
+            <thead>
+              <tr>
+                <th scope="col">Nº</th>
+                <th scope="col">Licitante</th>
+                <th scope="col" className="ledger__amount">Valor</th>
+                <th scope="col">Horário</th>
+                <th scope="col">Aponta para</th>
+                <th scope="col">Hash</th>
+                <th scope="col">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="ledger__row--genesis">
+                <td>000</td>
+                <td colSpan={4}>início da corrente</td>
+                <td>GENESIS:{lot.id}</td>
+                <td></td>
+              </tr>
+              {bids.map((bid) => {
+                const isBreak = !intact && bid.seq === brokenAtSeq;
+                return (
+                  <tr
+                    key={bid.seq}
+                    className={`${bid.valid ? '' : 'ledger__row--invalid'} ${isBreak ? 'ledger__row--break' : ''}`}
+                  >
+                    <td>{String(bid.seq).padStart(3, '0')}</td>
+                    <td>{bid.bidderAlias.replace('Licitante ', '')}</td>
+                    <td className="ledger__amount">{formatBRL(bid.amountCents)}</td>
+                    <td>
+                      <time dateTime={bid.createdAt}>{ledgerTime.format(new Date(bid.createdAt))}</time>
+                    </td>
+                    <td className="ledger__hash" title={bid.prevHash}>{shortHash(bid.prevHash)}</td>
+                    <td title={bid.hash}>{shortHash(bid.hash)}</td>
+                    <td className="ledger__check">{bid.valid ? 'confere' : isBreak ? 'quebra aqui' : 'não confiável'}</td>
+                  </tr>
+                );
+              })}
+              <tr className={`ledger__row--seal ${intact ? '' : 'ledger__row--invalid'}`}>
+                <td>selo</td>
+                <td colSpan={3}>{lot.bidCount} lances · último hash</td>
+                <td className="ledger__hash" title={lot.lastHash ?? ''}>
+                  {lot.lastHash ? shortHash(lot.lastHash) : `GENESIS:${lot.id}`}
+                </td>
+                <td title={lot.seal ?? ''}>{shortHash(lot.seal) ?? '—'}</td>
+                <td className="ledger__check">{intact ? 'confere' : 'não confere'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="muted small audit__note">
+          O selo trava o fim da corrente: detecta lances removidos ou acrescentados no final. Passe o mouse num hash
+          para ver o valor completo; no celular, deslize a tabela para ver as colunas de hash.
+        </p>
+      </section>
 
       <section className="card audit__how">
         <h2>Como esta verificação funciona</h2>
@@ -62,79 +121,6 @@ export function AuditPage() {
           <li>
             O cálculo usa uma chave secreta que fica só no servidor (nunca no banco). Por isso quem mexe nos dados não
             consegue recalcular hashes válidos para disfarçar a alteração.
-          </li>
-        </ol>
-      </section>
-
-      <section aria-labelledby="chain-title">
-        <h2 id="chain-title" className="audit__chain-title">Corrente de lances</h2>
-        <ol className="chain">
-          <li className="chain__block chain__block--genesis">
-            <div className="chain__head">
-              <span className="chain__seq">Início</span>
-              <span className="chain__alias">Bloco gênese</span>
-            </div>
-            <dl className="chain__hashes">
-              <div>
-                <dt>hash</dt>
-                <dd><code>GENESIS:{lot.id}</code></dd>
-              </div>
-            </dl>
-          </li>
-
-          {bids.map((bid) => {
-            const isBreak = !intact && bid.seq === brokenAtSeq;
-            return (
-              <li
-                key={bid.seq}
-                className={`chain__block ${bid.valid ? 'chain__block--ok' : 'chain__block--broken'} ${isBreak ? 'chain__block--break' : ''}`}
-              >
-                <div className="chain__link" aria-hidden="true">
-                  <Icon name="arrowDown" size={16} />
-                </div>
-                <div className="chain__head">
-                  <span className="chain__seq">Lance #{bid.seq}</span>
-                  <span className="chain__alias">{bid.bidderAlias}</span>
-                  <span className="chain__amount">{formatBRL(bid.amountCents)}</span>
-                  <span className="chain__status">
-                    <Icon name={bid.valid ? 'check' : 'close'} size={16} />
-                    {bid.valid ? 'confere' : isBreak ? 'quebra aqui' : 'não confiável'}
-                  </span>
-                </div>
-                <p className="chain__time">{formatDateTimeSeconds(bid.createdAt)}</p>
-                <dl className="chain__hashes">
-                  <div>
-                    <dt>aponta para</dt>
-                    <dd><code title={bid.prevHash}>{shortHash(bid.prevHash)}</code></dd>
-                  </div>
-                  <div>
-                    <dt>hash</dt>
-                    <dd><code title={bid.hash}>{shortHash(bid.hash)}</code></dd>
-                  </div>
-                </dl>
-              </li>
-            );
-          })}
-
-          <li className={`chain__block chain__block--seal ${intact ? 'chain__block--ok' : 'chain__block--broken'}`}>
-            <div className="chain__link" aria-hidden="true">
-              <Icon name="arrowDown" size={16} />
-            </div>
-            <div className="chain__head">
-              <span className="chain__seq">Selo do lote</span>
-              <span className="chain__alias">{lot.bidCount} lances · último hash</span>
-            </div>
-            <dl className="chain__hashes">
-              <div>
-                <dt>último</dt>
-                <dd><code title={lot.lastHash ?? ''}>{lot.lastHash ? shortHash(lot.lastHash) : `GENESIS:${lot.id}`}</code></dd>
-              </div>
-              <div>
-                <dt>selo</dt>
-                <dd><code title={lot.seal ?? ''}>{shortHash(lot.seal) ?? '—'}</code></dd>
-              </div>
-            </dl>
-            <p className="chain__note">O selo trava o fim da corrente: detecta lances removidos ou acrescentados no final.</p>
           </li>
         </ol>
       </section>

@@ -170,69 +170,44 @@
 .details dd { margin: 0.1rem 0 0; }
 
 /* ---------- Auditoria ---------- */
-.audit { max-width: 860px; }
-.audit__header { margin-bottom: 1.5rem; }
+.audit { max-width: 980px; }
+.audit__header { margin-bottom: 1.75rem; }
+/* Selo como carimbo: moldura dupla e versalete; verde se íntegro, vermelho se adulterado */
 .seal {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  padding: 1.4rem 1.5rem;
-  border-radius: var(--radius-lg);
-  border: 2px solid;
-  margin-bottom: 1.5rem;
+  border: 3px double currentColor;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+  display: grid;
+  gap: 0.35rem;
 }
-.seal--ok { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
-.seal--broken { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
-.seal__title { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; line-height: 1.1; margin: 0; }
-.seal__message { margin: 0.2rem 0 0; color: var(--text); }
-.audit__how ol { padding-left: 1.2rem; margin: 0; color: var(--text-muted); }
+.seal--ok { color: var(--ok); }
+.seal--broken { color: var(--danger); background: var(--danger-soft); }
+.seal p { margin: 0; }
+.seal__stamp {
+  font-family: var(--font-mono);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+.seal__message { color: var(--text); }
+.seal__meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
+.audit__chain { margin-bottom: 2.5rem; }
+.audit__chain h2 { margin-bottom: 0.75rem; }
+.audit__note { margin-top: 0.75rem; }
+.ledger--audit td:nth-child(6) { color: var(--text); }
+.ledger__check { color: var(--ok); }
+.ledger__row--genesis td,
+.ledger__row--seal td { color: var(--text-muted); font-style: italic; }
+.ledger__row--seal td { border-top: 1px solid var(--rule-ink); }
+.ledger__row--invalid td,
+.ledger__row--invalid .ledger__check { color: var(--danger); font-style: normal; }
+.ledger__row--break td { background: var(--danger-soft); font-weight: 600; }
+.audit__how ol { padding-left: 1.2rem; margin: 0; color: var(--text-muted); max-width: 70ch; }
 .audit__how li { margin-bottom: 0.5rem; }
 .audit__how strong,
 .audit__how em { color: var(--text); }
-.audit__chain-title { margin-top: 2rem; }
-
-.chain { list-style: none; padding: 0; margin: 1rem 0 0; }
-.chain__block {
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 5px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 0.9rem 1.1rem;
-  margin-top: 2rem;
-}
-.chain__block:first-child { margin-top: 0; }
-.chain__block--genesis { border-left-color: var(--accent); background: var(--surface-2); }
-.chain__block--ok { border-left-color: var(--ok); }
-.chain__block--broken { border-left-color: var(--danger); background: var(--danger-soft); }
-.chain__block--break { box-shadow: 0 0 0 2px var(--danger); }
-.chain__block--seal { border-style: dashed; border-left-style: solid; }
-/* Conector entre blocos: a "corrente" */
-.chain__link {
-  position: absolute;
-  top: -2rem;
-  left: 2rem;
-  height: 2rem;
-  width: 2px;
-  background: var(--border-strong);
-  display: grid;
-  place-items: center;
-}
-.chain__link .icon { background: var(--bg); color: var(--text-muted); border-radius: 50%; }
-.chain__block--broken .chain__link { background: var(--danger); }
-.chain__block--broken .chain__link .icon { color: var(--danger); }
-.chain__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
-.chain__seq { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 700; }
-.chain__alias { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); }
-.chain__amount { font-weight: 600; font-variant-numeric: tabular-nums; }
-.chain__status { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; }
-.chain__block--ok .chain__status { color: var(--ok); }
-.chain__block--broken .chain__status { color: var(--danger); }
-.chain__time { font-size: 0.8rem; color: var(--text-muted); margin: 0.1rem 0 0.5rem; }
-.chain__hashes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin: 0.4rem 0 0; }
-.chain__hashes dt { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.chain__hashes dd { margin: 0.1rem 0 0; }
-.chain__note { font-size: 0.82rem; color: var(--text-muted); margin: 0.6rem 0 0; }
 
 /* ---------- Comprovante ---------- */
 .receipt-page { max-width: 820px; }
@@ -461,10 +436,6 @@
   .cashbook td,
   .cashbook th { padding-right: 0.4rem; }
   .cashbook .cashbook__num { padding-left: 0.4rem; }
-  .seal { flex-direction: column; text-align: center; }
-  .seal__title { font-size: 1.6rem; }
-  .chain__hashes { grid-template-columns: 1fr; }
-  .chain__status { margin-left: 0; width: 100%; }
   .receipt { padding: 1.4rem; outline-offset: -6px; }
   .copy-field { flex-direction: column; }
   .search-bar { flex-direction: column; }
