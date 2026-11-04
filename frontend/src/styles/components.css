@@ -84,9 +84,9 @@
 .field > label,
 .field > .label,
 .role-picker legend {
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
 }

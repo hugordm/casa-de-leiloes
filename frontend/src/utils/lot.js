@@ -17,5 +17,6 @@ export function displayStatusAt(lot, now) {
 
 export const currentPrice = (lot) => lot.currentBidCents ?? lot.startingBidCents;
 
-// Número do lote no estilo catálogo: 7 → "Lote 007"
-export const lotNumber = (id) => `Lote ${String(id).padStart(3, '0')}`;
+// Número do lote no estilo catálogo: 7 → "007" e "Lote 007"
+export const lotDigits = (id) => String(id).padStart(3, '0');
+export const lotNumber = (id) => `Lote ${lotDigits(id)}`;

@@ -2,16 +2,16 @@
 
 /* ---------- Vitrine ---------- */
 .hero { padding: 1.5rem 0 2rem; max-width: 720px; }
-.hero h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); font-weight: 600; }
+.hero h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); }
 .hero__lead { color: var(--text-muted); font-size: 1.05rem; max-width: 600px; }
 
 .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; overflow-x: auto; }
 .tabs__tab {
   font: inherit;
   font-family: var(--font-serif);
-  font-size: 1.25rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
+  font-size: 1.2rem;
+  padding: 0.5rem 0 0.6rem;
+  margin-right: 1.75rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -21,59 +21,41 @@
   white-space: nowrap;
 }
 .tabs__tab:hover { color: var(--text); }
-.tabs__tab--active { color: var(--text); border-bottom-color: var(--accent); }
+.tabs__tab--active { color: var(--text); border-bottom-color: var(--text); }
 
 .filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.75rem; align-items: end; }
 .filters .field { margin-bottom: 0.5rem; }
 .filters__clear { margin-bottom: 0.5rem; height: 44px; }
 .filters__error { margin-bottom: 1rem; }
 
-.lot-grid {
+.lot-list { list-style: none; margin: 1.5rem 0 0; padding: 0; border-top: 1px solid var(--rule-ink); }
+.lot-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 5.5rem 140px minmax(0, 1fr) 11rem 9rem;
+  grid-template-areas: 'no thumb info price time';
   gap: 1.5rem;
-  margin-top: 1.25rem;
-}
-.lot-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  align-items: center;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
   color: var(--text);
   text-decoration: none;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
-.lot-card:hover { color: var(--text); transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--border-strong); }
-.lot-card__media { position: relative; aspect-ratio: 4 / 3; background: var(--image-bg); }
-.lot-card__media .lot-image { position: absolute; inset: 0; }
-.lot-card__badge { position: absolute; top: 0.75rem; left: 0.75rem; }
-.lot-card__body { padding: 1.1rem 1.2rem 1.2rem; display: flex; flex-direction: column; flex: 1; }
-.lot-card__title { font-size: 1.4rem; margin-bottom: 0.15rem; }
-.lot-card__artist {
-  color: var(--text-muted);
-  font-size: 0.86rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.lot-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 0.75rem;
-  margin-top: auto;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--border);
-}
-.lot-card__footer p { margin: 0; }
-.lot-card__price { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; font-variant-numeric: lining-nums; }
-.lot-card__time { text-align: right; }
-.lot-card__date { font-size: 0.88rem; font-weight: 500; }
-.lot-card__bids { font-size: 0.78rem; color: var(--text-muted); margin: 0.5rem 0 0; }
+.lot-row:hover { color: var(--text); }
+.lot-row:hover .lot-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.lot-row p { margin: 0; }
+.lot-row__no { grid-area: no; display: flex; flex-direction: column; line-height: 1; }
+.lot-row__no span { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); }
+.lot-row__no b { font-family: var(--font-serif); font-weight: 400; font-size: 2.4rem; font-variant-numeric: tabular-nums lining-nums; margin-top: 0.3rem; }
+.lot-row__thumb { grid-area: thumb; aspect-ratio: 4 / 3; border: 1px solid var(--border); background: var(--image-bg); overflow: hidden; }
+.lot-row__thumb .lot-image { min-height: 0; }
+.lot-row__info { grid-area: info; display: grid; gap: 0.2rem; min-width: 0; }
+.lot-row__title { font-size: 1.45rem; margin: 0.15rem 0 0; }
+.lot-row__artist { color: var(--text-muted); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lot-row__bids { font-size: 0.8rem; color: var(--text-muted); }
+.lot-row__price { grid-area: price; text-align: right; }
+.lot-row__amount { font-family: var(--font-serif); font-size: 1.45rem; }
+.lot-row__time { grid-area: time; text-align: right; font-size: 0.92rem; }
+.lot-row__time .countdown { font-size: 1.05rem; font-weight: 500; }
 
 /* ---------- Login / cadastro ---------- */
 .auth { display: flex; justify-content: center; padding-top: 1rem; }
@@ -426,6 +408,17 @@
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 900px) {
+  .lot-row {
+    grid-template-columns: 112px minmax(0, 1fr) auto;
+    grid-template-areas: 'thumb no no' 'thumb info info' 'price price time';
+    gap: 0.35rem 1rem;
+  }
+  .lot-row__no { flex-direction: row; align-items: baseline; gap: 0.4rem; }
+  .lot-row__no b { font-size: 1.1rem; margin: 0; }
+  .lot-row__thumb { align-self: start; }
+  .lot-row__title { font-size: 1.25rem; }
+  .lot-row__price { text-align: left; padding-top: 0.6rem; }
+  .lot-row__time { padding-top: 0.6rem; }
   .room__grid,
   .room__lower { grid-template-columns: 1fr; gap: 1.25rem; }
   .room__media { position: static; }

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { lotsApi } from '../api/endpoints';
-import { LotCard } from '../components/LotCard';
+import { LotRow } from '../components/LotRow';
 import { Loading, ErrorState, EmptyState } from '../components/PageState';
 import { Icon } from '../components/Icon';
 import { useServerNow } from '../hooks/useServerNow';
@@ -87,7 +87,7 @@ export function ShowcasePage() {
   return (
     <div className="container">
       <section className="hero">
-        <p className="eyebrow">Leilões de arte</p>
+        <p className="eyebrow">Catálogo</p>
         <h1>Obras-primas, lance a lance.</h1>
         <p className="hero__lead">
           Acervo do Art Institute of Chicago em leilões transparentes: cada lance fica registrado numa corrente
@@ -155,11 +155,13 @@ export function ShowcasePage() {
       ) : lots.length === 0 ? (
         <EmptyState title={hasFilters ? 'Nenhum lote encontrado com esses filtros.' : EMPTY_MESSAGES[status]} />
       ) : (
-        <div className="lot-grid">
+        <ol className="lot-list">
           {lots.map((lot) => (
-            <LotCard key={lot.id} lot={lot} now={now} />
+            <li key={lot.id}>
+              <LotRow lot={lot} now={now} />
+            </li>
           ))}
-        </div>
+        </ol>
       )}
     </div>
   );
