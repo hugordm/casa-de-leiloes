@@ -630,23 +630,41 @@ input::placeholder { color: var(--text-muted); opacity: 0.8; }
 .assistant__form-footer .btn > span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .assistant__counter--over { color: var(--danger) !important; font-weight: 600; }
 
-@media (max-width: 560px) {
-  .assistant { right: 1rem; bottom: 1rem; }
-  /* No celular o painel ocupa a largura toda, acima do botão */
+/* O botão flutuante ocupa ~92px no canto (1.25rem de margem + 56px + respiro). Quando a margem
+   livre ao lado do conteúdo é menor que isso, as páginas ganham esse recuo dos dois lados (para
+   continuarem centralizadas): assim nenhum conteúdo passa por baixo do botão. Em telas largas,
+   a própria margem já basta e o recuo fica no normal. */
+@media (min-width: 861px) {
+  .main > .container,
+  .footer__inner { padding-inline: max(1.25rem, calc(92px - max(0px, (100vw - var(--container)) / 2))); }
+}
+/* Até 860px não há margem livre: o botão sobe para o cabeçalho, ao lado do menu, em vez de
+   flutuar sobre a página, e o painel abre logo abaixo do cabeçalho. */
+@media (max-width: 860px) {
+  .assistant { top: calc(env(safe-area-inset-top, 0px) + 14px); bottom: auto; right: calc(1.25rem + 40px + 0.5rem); }
+  .assistant__toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: none;
+  }
+  .assistant__toggle:hover { background: var(--surface-2); }
   .assistant__panel {
     position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 76px);
+    bottom: auto;
     left: 0.75rem;
     right: 0.75rem;
-    bottom: calc(1rem + 56px + 0.75rem);
     width: auto;
     height: min(520px, calc(100dvh - 6.5rem));
   }
-  /* Toasts sobem para não ficarem atrás do botão do assistente */
-  .toast-region { bottom: calc(1rem + 56px + 0.75rem); }
 }
-/* Folga à direita do rodapé para o botão flutuante do assistente não cobrir os links.
-   Substitui o recuo do .container: 1.25rem dele + 56px do botão + 1rem de respiro. */
-.footer__inner { padding-right: calc(56px + 2.25rem); }
+@media (max-width: 360px) {
+  .brand__name { font-size: 1.2rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .assistant__panel, .assistant__typing span { animation: none; }
 }
