@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { meApi } from '../api/endpoints';
-import { Icon } from '../components/Icon';
 import { LotImage } from '../components/LotImage';
 import { EmptyState, ErrorState, Loading } from '../components/PageState';
 import { StatusBadge } from '../components/StatusBadge';
@@ -44,7 +43,7 @@ export function MyWinsPage() {
       {won.length > 0 && (
         <section className="section">
           <h2 className="section__title">
-            <Icon name="trophy" /> Arrematados
+            Arrematados
           </h2>
           <div className="win-grid">
             {won.map(({ lot, receiptCode }) => (
@@ -75,7 +74,7 @@ export function MyWinsPage() {
       {active.length > 0 && (
         <section className="section">
           <h2 className="section__title">
-            <Icon name="clock" /> Em andamento
+            Em andamento
           </h2>
           <ParticipationList items={active} now={now} />
         </section>

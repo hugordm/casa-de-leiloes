@@ -82,7 +82,7 @@
 .role-option:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .role-option strong { display: block; color: var(--text); }
 .role-option small { display: block; font-size: 0.78rem; line-height: 1.35; }
-.role-option--active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.role-option--active { border-color: var(--text); background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
 
 /* ---------- Sala do lote ---------- */
 .room__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 3rem; align-items: start; }
@@ -221,7 +221,7 @@
   outline: 1px solid var(--border);
   outline-offset: -10px;
 }
-.receipt__header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; color: var(--accent); }
+.receipt__header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; }
 .receipt__header h1 { color: var(--text); margin: 0.2rem 0; }
 .receipt__code { color: var(--text-muted); margin: 0; }
 .receipt__body { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1.75rem; align-items: start; }
@@ -230,7 +230,7 @@
 .receipt__facts { margin: 1.25rem 0 0; display: grid; gap: 0.85rem; }
 .receipt__facts dt { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .receipt__facts dd { margin: 0.1rem 0 0; font-weight: 500; }
-.receipt__amount { font-family: var(--font-serif); font-size: 2.3rem; font-weight: 700 !important; color: var(--accent); line-height: 1.1; }
+.receipt__amount { font-family: var(--font-serif); font-size: 2.3rem; font-weight: 400 !important; line-height: 1.1; font-variant-numeric: lining-nums tabular-nums; }
 .receipt__footer { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
 .receipt__share { margin: 1rem 0 0.5rem; }
 .copy-field { display: flex; gap: 0.5rem; margin-top: 0.35rem; }
@@ -292,29 +292,29 @@
 
 /* ---------- Meus arremates ---------- */
 .win-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
-.win-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.win-card { padding: 0; display: flex; flex-direction: column; border-top: none; }
+.win-card > .lot-image { border: 1px solid var(--border); }
 .win-card > .lot-image { aspect-ratio: 16 / 10; }
-.win-card__body { padding: 1.1rem 1.25rem 1.25rem; }
-.win-card__price { font-family: var(--font-serif); font-size: 1.7rem; font-weight: 700; color: var(--accent); margin: 0.4rem 0 0.1rem; }
+.win-card__body { padding: 1rem 0 0; }
+.win-card__price { font-family: var(--font-serif); font-size: 1.7rem; margin: 0.4rem 0 0.1rem; font-variant-numeric: lining-nums tabular-nums; }
 .win-card__actions { display: flex; gap: 0.5rem; margin-top: 0.9rem; flex-wrap: wrap; }
 .win-grid .card + .card { margin-top: 0; }
 
-.participation { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+.participation { list-style: none; padding: 0; margin: 0; display: grid; border-top: 1px solid var(--rule-ink); }
 .participation__row {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto auto;
   gap: 1rem;
   align-items: center;
-  padding: 0.7rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
   color: var(--text);
   text-decoration: none;
 }
-.participation__row:hover { border-color: var(--border-strong); color: var(--text); }
+.participation__row:hover { color: var(--text); }
+.participation__row:hover .participation__title { text-decoration: underline; text-underline-offset: 3px; }
 .participation__thumb { width: 64px; height: 64px; border-radius: var(--radius-sm); min-height: 0; }
-.participation__title { font-weight: 600; margin: 0; }
+.participation__title { font-family: var(--font-serif); font-size: 1.1rem; margin: 0; }
 .participation__info p { margin: 0; }
 
 /* ---------- Painel do leiloeiro ---------- */
@@ -324,13 +324,13 @@
   grid-template-columns: 80px minmax(0, 1fr) auto auto;
   gap: 1.25rem;
   align-items: center;
-  padding: 0.9rem;
+  padding: 1rem 0;
 }
-.dash-list .card + .card { margin-top: 0; }
+.dash-list .card + .card { margin-top: 0; border-top-color: var(--border); }
 .dash-item__thumb { width: 80px; height: 80px; border-radius: var(--radius-sm); min-height: 0; }
 .dash-item__info p { margin: 0; }
-.dash-item__title { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600; color: var(--text); text-decoration: none; }
-.dash-item__title:hover { color: var(--accent); }
+.dash-item__title { font-family: var(--font-serif); font-size: 1.3rem; color: var(--text); text-decoration: none; }
+.dash-item__title:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-item__result { text-align: right; }
 .dash-item__result p { margin: 0.3rem 0 0; }
 .dash-item__price { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -367,7 +367,7 @@
 .catalog-item .lot-image { aspect-ratio: 1; min-height: 0; }
 .catalog-item__title { font-weight: 600; font-size: 0.9rem; padding: 0.55rem 0.7rem 0; line-height: 1.3; }
 .catalog-item__artist { font-size: 0.78rem; color: var(--text-muted); padding: 0.15rem 0.7rem 0; line-height: 1.3; }
-.catalog-item--selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.catalog-item--selected { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
 .catalog-item__check {
   position: absolute;
   top: 0.5rem;
@@ -382,7 +382,7 @@
 }
 .new-lot__grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 1.75rem; margin-top: 1rem; }
 .new-lot__preview .lot-image { border-radius: var(--radius); aspect-ratio: 4 / 5; border: 1px solid var(--border); }
-.new-lot__title { font-family: var(--font-serif); font-size: 1.35rem; font-weight: 600; margin: 0.75rem 0 0.1rem; }
+.new-lot__title { font-family: var(--font-serif); font-size: 1.35rem; margin: 0.75rem 0 0.1rem; }
 .new-lot__summary { color: var(--text-muted); font-size: 0.9rem; min-height: 1.4em; }
 .new-lot .field input[type='datetime-local'] { max-width: 320px; }
 

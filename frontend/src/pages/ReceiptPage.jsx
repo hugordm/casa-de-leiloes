@@ -63,7 +63,6 @@ export function ReceiptPage() {
     <div className="container receipt-page">
       <article className="receipt">
         <header className="receipt__header">
-          <Icon name="gavel" size={26} />
           <p className="eyebrow">Casa de Leilões</p>
           <h1>Comprovante de arremate</h1>
           <p className="receipt__code">
@@ -115,7 +114,7 @@ export function ReceiptPage() {
             </div>
           </div>
           <Link to={receipt.auditUrl} className="audit-link">
-            <Icon name="shieldCheck" size={18} /> Ver auditoria dos lances deste lote
+            Ver auditoria dos lances deste lote
           </Link>
         </footer>
       </article>
