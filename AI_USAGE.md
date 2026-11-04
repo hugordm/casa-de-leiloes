@@ -404,7 +404,14 @@ paleta, tipografia e componentes, especialmente nas telas de lances, contagem re
   trava: sem a linha do lock, as rodadas simultâneas criaram de 3 a 5 lotes e o teste falhou.
 - README: variável `DEMO_KEEP_LIVE` nas variáveis de ambiente (local e produção) e nos testes.
 
-**Revisado/ajustado por mim:** (a preencher)
+**Revisado/ajustado por mim:**
+- Notei que o lote ao vivo de produção encerraria em 22/11 e a vitrine
+  ficaria vazia. Comparei três opções (estender a data, script manual e
+  rotina automática) e escolhi a automática, desligada por padrão e sem
+  lances, para não esgotar o saldo dos licitantes demo.
+- Pedi uma trava contra lotes duplicados com teste; o teste mostrou que,
+  sem a trava, rodadas simultâneas criavam até 5 lotes.
+- Criei a variável DEMO_KEEP_LIVE no painel do Render.
 
 ## Funcionalidade iniciada e descartada
 
