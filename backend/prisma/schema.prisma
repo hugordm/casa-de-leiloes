@@ -104,6 +104,9 @@ model Lot {
   // Usado pelo job de liquidação: "lotes ACTIVE com endsAt <= agora"
   @@index([status, endsAt])
   @@index([auctioneerId])
+  // Saldo comprometido: "lotes ACTIVE onde leaderId = usuário" (consultado a cada lance
+  // e a cada abertura da carteira). leaderId vem primeiro porque é o filtro mais seletivo.
+  @@index([leaderId, status])
 }
 
 model Bid {
