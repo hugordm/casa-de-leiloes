@@ -6,18 +6,31 @@ import { useToast } from '../context/ToastContext';
 import { Button } from '../components/Button';
 import { MoneyInput } from '../components/MoneyInput';
 import { ErrorState, Loading } from '../components/PageState';
-import { centsToInput, formatBRL, formatDateTime, parseBRL } from '../utils/format';
+import { centsToInput, formatBRL, parseBRL } from '../utils/format';
 
 const MAX_DEPOSIT_CENTS = 10_000_000; // R$ 100.000 (mesmo limite da API)
 const QUICK_AMOUNTS = [10000, 50000, 100000, 500000];
 
+// effect: quanto o lançamento muda o saldo total. REFUND é informativo: o valor estava só
+// comprometido (nada foi debitado), então o saldo total não muda.
 const TX_LABEL = {
-  DEPOSIT: { label: 'Depósito', sign: '+' },
-  DEBIT: { label: 'Pagamento de arremate', sign: '−' },
-  CREDIT: { label: 'Recebimento de arremate', sign: '+' },
-  // Informativo: o valor estava só comprometido (nada foi debitado), então o saldo total não muda.
-  REFUND: { label: 'Lote cancelado (valor liberado)', sign: '' },
+  DEPOSIT: { label: 'Depósito', sign: '+', effect: 1 },
+  DEBIT: { label: 'Pagamento de arremate', sign: '−', effect: -1 },
+  CREDIT: { label: 'Recebimento de arremate', sign: '+', effect: 1 },
+  REFUND: { label: 'Lote cancelado (valor liberado)', sign: '', effect: 0 },
 };
+const shortDate = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+// Saldo após cada lançamento, como num livro-caixa. A API manda os mais recentes primeiro;
+// partindo do saldo atual e desfazendo cada lançamento, chega-se ao saldo de cada linha.
+function withRunningBalance(transactions, balanceCents) {
+  let after = balanceCents;
+  return transactions.map((t) => {
+    const row = { ...t, balanceAfter: after };
+    after -= (TX_LABEL[t.type]?.effect ?? 0) * t.amountCents;
+    return row;
+  });
+}
 
 export function WalletPage() {
   const toast = useToast();
@@ -71,32 +84,55 @@ export function WalletPage() {
   if (error) return <div className="container"><ErrorState message={error} /></div>;
   if (!wallet) return <Loading label="Carregando carteira…" />;
 
+  const committedPct = wallet.balanceCents > 0 ? (wallet.committedCents / wallet.balanceCents) * 100 : 0;
+  const rows = withRunningBalance(wallet.transactions, wallet.balanceCents);
+
   return (
-    <div className="container">
+    <div className="container wallet">
       <header className="page-head">
         <p className="eyebrow">Licitante</p>
         <h1>Carteira</h1>
       </header>
 
-      <div className="stats">
-        <div className="stat">
-          <p className="label">Saldo total</p>
-          <p className="stat__value">{formatBRL(wallet.balanceCents)}</p>
-          <p className="stat__hint">Tudo o que você depositou, menos os arremates pagos.</p>
-        </div>
-        <div className="stat stat--warn">
-          <p className="label">Comprometido</p>
-          <p className="stat__value">{formatBRL(wallet.committedCents)}</p>
-          <p className="stat__hint">Reservado nos lotes em que você lidera. Volta ao disponível se for superado.</p>
-        </div>
-        <div className="stat stat--ok">
-          <p className="label">Disponível para lances</p>
-          <p className="stat__value">{formatBRL(wallet.availableCents)}</p>
-          <p className="stat__hint">Saldo total − comprometido.</p>
-        </div>
-      </div>
+      <section className="wallet__summary" aria-label="Resumo do saldo">
+        <dl className="ledger-sum">
+          <div className="stat">
+            <dt>Saldo total</dt>
+            <dd className="num">{formatBRL(wallet.balanceCents)}</dd>
+          </div>
+          <div className="stat stat--committed">
+            <dt>Comprometido</dt>
+            <dd className="num">{formatBRL(wallet.committedCents)}</dd>
+          </div>
+          <div className="stat stat--available">
+            <dt>Disponível para lances</dt>
+            <dd className="num">{formatBRL(wallet.availableCents)}</dd>
+          </div>
+        </dl>
 
-      <div className="two-cols">
+        <div className="wallet__split">
+          <div
+            className="split-bar"
+            role="img"
+            aria-label={`${Math.round(committedPct)}% do saldo total comprometido em lances`}
+          >
+            <span className="split-bar__committed" style={{ width: `${committedPct}%` }} />
+            <span className="split-bar__available" style={{ width: `${100 - committedPct}%` }} />
+          </div>
+          <ul className="split-legend">
+            <li>
+              <span className="split-legend__key split-legend__key--committed" />
+              Comprometido: reservado nos lotes em que você lidera. Volta ao disponível se for superado.
+            </li>
+            <li>
+              <span className="split-legend__key split-legend__key--available" />
+              Disponível: saldo total menos o comprometido.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div className="wallet__grid">
         <section className="card" aria-labelledby="deposit-title">
           <h2 id="deposit-title">Depositar</h2>
           <form onSubmit={handleDeposit} noValidate>
@@ -127,34 +163,44 @@ export function WalletPage() {
 
         <section className="card" aria-labelledby="statement-title">
           <h2 id="statement-title">Extrato</h2>
-          {wallet.transactions.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="muted">Nenhuma movimentação ainda.</p>
           ) : (
-            <ul className="statement">
-              {wallet.transactions.map((t) => {
-                const info = TX_LABEL[t.type] ?? { label: t.type, sign: '' };
-                return (
-                  <li key={t.id} className={`statement__row statement__row--${t.type.toLowerCase()}`}>
-                    <div>
-                      <p className="statement__label">{info.label}</p>
-                      <p className="muted small">
-                        {formatDateTime(t.createdAt)}
-                        {t.lot && (
-                          <>
-                            {' · '}
-                            <Link to={`/lotes/${t.lot.id}`}>{t.lot.title}</Link>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                    <p className="statement__amount">
-                      {info.sign} {formatBRL(t.amountCents)}
-                      {t.type === 'REFUND' && <small className="statement__note">liberado, sem alterar o total</small>}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="ledger-wrap">
+              <table className="cashbook">
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Lançamento</th>
+                    <th scope="col" className="cashbook__num">Valor</th>
+                    <th scope="col" className="cashbook__num">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((t) => {
+                    const info = TX_LABEL[t.type] ?? { label: t.type, sign: '' };
+                    return (
+                      <tr key={t.id} className={`cashbook__row--${t.type.toLowerCase()}`}>
+                        <td className="num">{shortDate.format(new Date(t.createdAt))}</td>
+                        <td className="cashbook__desc">
+                          {info.label}
+                          {t.lot && (
+                            <Link to={`/lotes/${t.lot.id}`} className="cashbook__lot">
+                              {t.lot.title}
+                            </Link>
+                          )}
+                        </td>
+                        <td className="cashbook__num cashbook__amount">
+                          {info.sign} {formatBRL(t.amountCents)}
+                          {t.type === 'REFUND' && <small className="cashbook__note">liberado, sem alterar o total</small>}
+                        </td>
+                        <td className="cashbook__num">{formatBRL(t.balanceAfter)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

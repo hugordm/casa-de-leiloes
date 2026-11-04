@@ -262,22 +262,58 @@
 .copy-field input { font-family: var(--font-mono); font-size: 0.85rem; }
 
 /* ---------- Carteira ---------- */
-.statement { list-style: none; padding: 0; margin: 0; }
-.statement__row {
-  display: flex;
-  justify-content: space-between;
+.wallet__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3rem;
   align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--rule-ink);
+  border-bottom: 1px solid var(--rule-ink);
+  padding: 1.25rem 0;
+  margin-bottom: 2.5rem;
 }
-.statement__row:last-child { border-bottom: none; }
-.statement__row p { margin: 0; }
-.statement__label { font-weight: 600; }
-.statement__amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.statement__row--deposit .statement__amount,
-.statement__row--credit .statement__amount { color: var(--ok); }
-.statement__row--debit .statement__amount { color: var(--danger); }
+/* Resumo de livro-caixa: rótulo, linha pontilhada e valor */
+.ledger-sum { margin: 0; display: grid; }
+.ledger-sum .stat { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.45rem 0; }
+.ledger-sum dt { white-space: nowrap; }
+.ledger-sum dt::after { content: none; }
+.ledger-sum .stat::before { content: ''; order: 1; flex: 1; border-bottom: 1px dotted var(--border-strong); transform: translateY(-0.3em); }
+.ledger-sum dd { order: 2; margin: 0; font-family: var(--font-serif); font-size: 1.35rem; }
+.ledger-sum .stat--available { border-top: 1px solid var(--rule-ink); margin-top: 0.35rem; padding-top: 0.7rem; }
+.ledger-sum .stat--available dd { font-size: 1.9rem; }
+.ledger-sum .stat--committed dd { color: var(--accent); }
+
+.split-bar { display: flex; height: 14px; border: 1px solid var(--rule-ink); background: var(--surface); }
+.split-bar span { display: block; height: 100%; transition: width 0.3s ease; }
+.split-bar__committed { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); }
+.split-bar__available { background: var(--rule-ink); }
+.split-legend { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.45rem; font-size: 0.85rem; color: var(--text-muted); }
+.split-legend li { display: flex; gap: 0.6rem; align-items: baseline; }
+.split-legend__key { flex: none; width: 10px; height: 10px; border: 1px solid var(--rule-ink); transform: translateY(1px); }
+.split-legend__key--committed { background: repeating-linear-gradient(135deg, var(--accent) 0 2px, transparent 2px 4px); }
+.split-legend__key--available { background: var(--rule-ink); }
+
+.wallet__grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); gap: 3rem; align-items: start; }
+.wallet__grid .card + .card { margin-top: 0; }
+
+.cashbook { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.cashbook th {
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  border-bottom: 1px solid var(--rule-ink);
+}
+.cashbook td { padding: 0.65rem 0.75rem 0.65rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+.cashbook .cashbook__num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; padding-right: 0; padding-left: 1rem; }
+.cashbook__desc { min-width: 10rem; }
+.cashbook__lot { display: block; font-size: 0.82rem; color: var(--text-muted); }
+.cashbook__amount { font-weight: 500; }
+.cashbook__row--debit .cashbook__amount { color: var(--accent); }
+.cashbook__note { display: block; font-size: 0.72rem; font-weight: 400; color: var(--text-muted); }
 
 /* ---------- Meus arremates ---------- */
 .win-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
@@ -415,9 +451,16 @@
   .hero { padding-top: 0.5rem; }
   .room__price,
   .room__time { font-size: 1.9rem; }
+  .wallet__summary,
+  .wallet__grid { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
   .room__figures { grid-template-columns: minmax(0, 1fr); }
   .room__figures > div + div { padding-left: 0; border-left: none; border-top: 1px solid var(--border); text-align: left; }
   .details { grid-template-columns: 1fr; }
+  .cashbook { font-size: 0.82rem; }
+  .cashbook__desc { min-width: 0; }
+  .cashbook td,
+  .cashbook th { padding-right: 0.4rem; }
+  .cashbook .cashbook__num { padding-left: 0.4rem; }
   .seal { flex-direction: column; text-align: center; }
   .seal__title { font-size: 1.6rem; }
   .chain__hashes { grid-template-columns: 1fr; }
@@ -428,4 +471,3 @@
   .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .role-picker { grid-template-columns: 1fr; }
 }
-.statement__note { display: block; font-size: 0.75rem; font-weight: 400; color: var(--text-muted); text-align: right; }

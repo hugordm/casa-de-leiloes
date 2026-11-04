@@ -195,24 +195,11 @@ input::placeholder { color: var(--text-muted); opacity: 0.8; }
 }
 .back-link:hover { color: var(--text); }
 
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 1.1rem 1.25rem;
-}
-.stat--ok { border-left-color: var(--ok); }
-.stat--warn { border-left-color: var(--warn); }
-.stat__value {
-  font-family: var(--font-serif);
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 1.1;
-  margin: 0.15rem 0 0.3rem;
-  font-variant-numeric: lining-nums tabular-nums;
-}
+/* Números-resumo (painel do leiloeiro): colunas separadas por fios, sem caixas */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--rule-ink); border-bottom: 1px solid var(--border); margin-bottom: 2.25rem; }
+.stats .stat { padding: 1rem 1.25rem 1rem 0; }
+.stats .stat + .stat { border-left: 1px solid var(--border); padding-left: 1.25rem; }
+.stat__value { font-family: var(--font-serif); font-size: 2rem; line-height: 1.1; margin: 0.2rem 0 0.3rem; font-variant-numeric: lining-nums tabular-nums; }
 .stat__hint { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
 
 /* ---------- Status do lote e pílulas ---------- */
@@ -464,7 +451,8 @@ input::placeholder { color: var(--text-muted); opacity: 0.8; }
   .nav__link--active { box-shadow: inset 2px 0 0 var(--text); padding-left: 0.85rem; }
   .nav__actions { margin: 0.5rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--border); justify-content: space-between; }
   .nav__user-name { text-align: left; }
-  .stats { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: minmax(0, 1fr); }
+  .stats .stat + .stat { border-left: none; border-top: 1px solid var(--border); padding-left: 0; }
   .two-cols { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
